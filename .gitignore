@@ -1,0 +1,46 @@
+# ==============================================
+# Unity Project .gitignore
+# ==============================================
+
+# Unity generated project files
+*.csproj
+*.sln
+*.unityproj
+*.userprefs
+*.pidb
+*.booproj
+
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# Build results
+[Bb]uild/
+[Bb]uilds/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.vcxproj.user
+*.suo
+*.cache
+.vsconfig
+
+# Rider IDE
+.idea/
+*.sln.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==============================================
+# These should be committed!
+# ==============================================
+# Assets/
+# Packages/
+# ProjectSettings/
