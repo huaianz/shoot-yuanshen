@@ -10,7 +10,7 @@ public abstract class StateBase
     /// <summary>
     /// 初始化状态
     /// </summary>
-    public abstract void Init();
+    public abstract void Init(IStateMachineOwner owner);
 
     /// <summary>
     /// 进入状态

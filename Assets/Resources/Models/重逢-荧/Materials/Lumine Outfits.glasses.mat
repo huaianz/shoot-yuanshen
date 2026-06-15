@@ -21,22 +21,24 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Lumine Outfits.glasses
-  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: b3a5ca620cf906445a708f4f5731a19d, type: 3}
   m_ValidKeywords:
   - _ADDITIONAL_LIGHTS
   - _ADDITIONAL_LIGHT_SHADOWS
+  - _GRADIENT_DIRECTION_X
   - _MAIN_LIGHT_SHADOWS
   - _MAIN_LIGHT_SHADOWS_CASCADE
   - _SHADOWS_SOFT
-  m_InvalidKeywords:
-  - _GRADIENT_DIRECTION_X
+  - _SURFACE_TYPE_TRANSPARENT
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 3000
   stringTagMap:
-    RenderType: Opaque
-  disabledShaderPasses: []
+    RenderType: Transparent
+  disabledShaderPasses:
+  - DepthOnly
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -125,7 +127,7 @@ Material:
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
-    - _DstBlend: 0
+    - _DstBlend: 10
     - _DynamicRemap: 0.5
     - _Emission: 0
     - _EnvironmentReflections: 1
@@ -151,7 +153,7 @@ Material:
     - _Preview_X: 0
     - _Preview_Y: 0
     - _Preview_Z: 0
-    - _QueueControl: -1
+    - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
     - _ReceiveShadowsEnabled: 1
@@ -170,8 +172,8 @@ Material:
     - _SpecularSmoothness: 0.1
     - _Specular_Customize_Enabled: 0
     - _Specular_Hide_On_Shadows: 1
-    - _SrcBlend: 1
-    - _Surface: 0
+    - _SrcBlend: 5
+    - _Surface: 1
     - _UVSec: 0
     - _WorkflowMode: 1
     - _X_Modifier: 0
@@ -181,17 +183,17 @@ Material:
     - _Y_Offset: 0
     - _Y_Pos_Multiplier: 10
     - _ZTest: 4
-    - _ZWrite: 1
+    - _ZWrite: 0
     - _ZWriteControl: 0
     - _Z_Modifier: 0
     - _Z_Offset: 0
     - _Z_Pos_Multiplier: 10
     - _is_Face: 0
     m_Colors:
-    - _Ambient: {r: 0.25471696, g: 0.25471696, b: 0.25471696, a: 0}
-    - _BaseColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}
+    - _Ambient: {r: 0.72327036, g: 0.72327036, b: 0.72327036, a: 0}
+    - _BaseColor: {r: 0.95686275, g: 0.7764706, b: 0.7764706, a: 0.6039216}
     - _BaseMapTiling: {r: 1, g: 1, b: 0, a: 0}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.8, g: 0.8, b: 0.8, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
     - _GColor_1: {r: 0, g: 0, b: 0, a: 0}
     - _GColor_2: {r: 0, g: 0, b: 0, a: 0}
