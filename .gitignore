@@ -1,46 +1,29 @@
-# ==============================================
-# Unity Project .gitignore
-# ==============================================
+# Unity 生成的文件夹（完全不需要进版本控制）
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
 
-# Unity generated project files
-*.csproj
-*.sln
-*.unityproj
-*.userprefs
-*.pidb
-*.booproj
+# 资源商店的缓存
+/[Aa]ssets/AssetStoreTools*
 
-# Unity generated folders
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Ll]ogs/
-[Uu]ser[Ss]ettings/
+# 忽略所有 .meta 文件（⚠️ 注意：这会导致资源引用丢失）
+# /[Aa]ssets/**/*.meta
 
-# Build results
-[Bb]uild/
-[Bb]uilds/
-
-# Visual Studio / VS Code
-.vs/
-.vscode/
-*.vcxproj.user
-*.suo
-*.cache
-.vsconfig
-
-# Rider IDE
-.idea/
-*.sln.iml
-
-# OS generated files
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# ==============================================
-# These should be committed!
-# ==============================================
-# Assets/
-# Packages/
-# ProjectSettings/
+# 忽略特定非代码资源（根据你的需求）
+*.fbx
+*.png
+*.jpg
+*.wav
+*.mp3
+*.mat
+*.prefab
+*.unity
+*.asset
+*.controller
+*.anim

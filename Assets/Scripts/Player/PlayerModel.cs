@@ -2,10 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerController : SingleMonoBase<PlayerController>
+public class PlayerModel : MonoBehaviour
 {
-    //当前所操控的角色模型
-    public PlayerModel currentPlayerModel;
+    // Start is called before the first frame update
     void Start()
     {
         
