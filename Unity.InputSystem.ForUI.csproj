@@ -19,7 +19,7 @@
     <RootNamespace></RootNamespace>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <AssemblyName>Unity.Performance.Profile-Analyzer.Editor</AssemblyName>
+    <AssemblyName>Unity.InputSystem.ForUI</AssemblyName>
     <TargetFramework>netstandard2.1</TargetFramework>
     <BaseDirectory>.</BaseDirectory>
   </PropertyGroup>
@@ -54,7 +54,7 @@
     <UnityProjectGenerator>Package</UnityProjectGenerator>
     <UnityProjectGeneratorVersion>2.0.22</UnityProjectGeneratorVersion>
     <UnityProjectGeneratorStyle>SDK</UnityProjectGeneratorStyle>
-    <UnityProjectType>Editor:5</UnityProjectType>
+    <UnityProjectType>Game:1</UnityProjectType>
     <UnityBuildTarget>StandaloneWindows64:19</UnityBuildTarget>
     <UnityVersion>2021.3.45f2c1</UnityVersion>
   </PropertyGroup>
@@ -62,43 +62,11 @@
     <Analyzer Include="C:\Users\谭凌志\.vscode\extensions\visualstudiotoolsforunity.vstuc-1.2.2\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\Analytics.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ThreadSelectionWindow.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ThreadData.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfilerWindowInterface.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\DepthSliceUI.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfileTable.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ThreadFrameTime.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\TopMarkers.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfileAnalyzerExportWindow.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfileAnalyzer.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ThreadSelection.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\AssemblyInfo.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\TimingOptions.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProgressBarDisplay.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ComparisonTable.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\MarkerData.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\Draw2D.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\TopMarkerList.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\BoxAndWhiskerPlot.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\FrameSummary.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\MarkerColumnFilter.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfileDataView.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ThreadIdentifier.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\FrameTime.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\FrameTimeGraph.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\Units.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfileAnalyzerWindow.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\Histogram.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfileData.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\Columns.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\DepthSliceDropdown.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\MarkerPairing.cs" />
-    <Compile Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfileAnalysis.cs" />
+    <Compile Include="Library\PackageCache\com.unity.inputsystem@1.7.0\InputSystem\Plugins\InputForUI\InputSystemProvider.cs" />
+    <Compile Include="Library\PackageCache\com.unity.inputsystem@1.7.0\InputSystem\Plugins\InputForUI\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\Unity.Performance.Profile-Analyzer.Editor.asmdef" />
-    <None Include="Library\PackageCache\com.unity.performance.profile-analyzer@1.2.2\Editor\ProfileAnalyzerShader.shader" />
+    <None Include="Library\PackageCache\com.unity.inputsystem@1.7.0\InputSystem\Plugins\InputForUI\InputSystemForUI.asmdef" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
@@ -131,10 +99,6 @@
     </Reference>
     <Reference Include="UnityEngine.AudioModule">
       <HintPath>D:\yx\2021.3.45f2c1\Editor\Data\Managed\UnityEngine\UnityEngine.AudioModule.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEngine.AutoStreamingModule">
-      <HintPath>D:\yx\2021.3.45f2c1\Editor\Data\Managed\UnityEngine\UnityEngine.AutoStreamingModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.ClothModule">
@@ -203,10 +167,6 @@
     </Reference>
     <Reference Include="UnityEngine.LocalizationModule">
       <HintPath>D:\yx\2021.3.45f2c1\Editor\Data\Managed\UnityEngine\UnityEngine.LocalizationModule.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEngine.NVIDIAModule">
-      <HintPath>D:\yx\2021.3.45f2c1\Editor\Data\Managed\UnityEngine\UnityEngine.NVIDIAModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.ParticleSystemModule">
@@ -483,10 +443,6 @@
     </Reference>
     <Reference Include="unityplastic">
       <HintPath>Library\PackageCache\com.unity.collab-proxy@2.5.2\Lib\Editor\PlasticSCM\unityplastic.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="nunit.framework">
-      <HintPath>Library\PackageCache\com.unity.ext.nunit@1.0.6\net35\unity-custom\nunit.framework.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="mscorlib">
@@ -991,10 +947,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="Unity.InputSystem.csproj" />
     <ProjectReference Include="UnityEditor.UI.csproj" />
     <ProjectReference Include="UnityEngine.UI.csproj" />
-    <ProjectReference Include="UnityEngine.TestRunner.csproj" />
-    <ProjectReference Include="UnityEditor.TestRunner.csproj" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>

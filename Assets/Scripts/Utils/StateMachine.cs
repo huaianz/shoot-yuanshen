@@ -15,6 +15,10 @@ public class StateMachine
     //状态字典
     private Dictionary<Type,StateBase> stateDic=new Dictionary<Type, StateBase>();
 
+    public StateMachine(IStateMachineOwner owner)
+    {
+        this.owner=owner;
+    }
     /// <summary>
     /// 进入动画状态
     /// </summary>
@@ -22,7 +26,7 @@ public class StateMachine
     public void EnterState<T>()where T: StateBase,new()
     {
         //防止重复进入同一个动画状态
-        if(currentState.GetType()==typeof(T))
+        if(currentState!=null && currentState.GetType()==typeof(T))
             return;
         if(currentState!=null)
             currentState.Exit();
