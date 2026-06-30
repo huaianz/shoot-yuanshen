@@ -27,4 +27,6 @@ public abstract class StateBase
     /// 销毁
     /// </summary>
     public abstract void Destroy();
+
+    public abstract void Update();
 }
