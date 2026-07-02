@@ -1,0 +1,22 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class ZombieIdleState : EnemyStateBase
+{
+    public override void Enter()
+    {
+        base.Enter();
+        enemyModel.PlayStateAnimation("Idle");
+        enemyModel.navMeshAgent.enabled = false;
+    }
+
+    public override void Update()
+    {
+        base.Update();
+        if (!enemyModel.IsAttackTargetInAttackRange())
+        {
+            enemyModel.SwitchState(EnemyState.Move);
+        }
+    }
+}
