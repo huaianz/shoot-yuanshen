@@ -37,13 +37,17 @@ sysinfo.txt
 *.unitypackage
 *.app
 
-# ========== 关键：忽略 Assets 下所有文件 ==========
+# ========== 核心：只保留C#代码 ==========
+# 第1步：忽略 Assets 下所有文件和目录
 Assets/**/*
 
-# ========== 然后只把 C# 脚本和它的 meta 救回来 ==========
+# 第2步：关键！把所有子目录救回来（让Git能进去找文件）
+!Assets/**/
+
+# 第3步：只把 C# 脚本和对应的 meta 救回来
 !Assets/**/*.cs
 !Assets/**/*.cs.meta
 
-# ========== 保留 ProjectSettings 和 Packages（团队项目需要，个人可删） ==========
+# ========== 保留项目设置和包（建议留着） ==========
 !/[Pp]rojectSettings/
 !/[Pp]ackages/
