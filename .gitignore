@@ -44,9 +44,11 @@ Assets/**/*
 # 第2步：关键！把所有子目录救回来（让Git能进去找文件）
 !Assets/**/
 
-# 第3步：只把 C# 脚本和对应的 meta 救回来
-!Assets/**/*.cs
-!Assets/**/*.cs.meta
+# 第3步：只把 Scripts 文件夹里的 C# 脚本救回来
+!Assets/Scripts/
+!Assets/Scripts/**/
+!Assets/Scripts/**/*.cs
+!Assets/Scripts/**/*.cs.meta
 
 # ========== 保留项目设置和包（建议留着） ==========
 !/[Pp]rojectSettings/
