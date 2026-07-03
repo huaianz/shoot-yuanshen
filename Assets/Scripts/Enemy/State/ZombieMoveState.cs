@@ -8,7 +8,6 @@ public class ZombieMoveState : EnemyStateBase
     {
         base.Enter();
         enemyModel.PlayStateAnimation("Move");
-        enemyModel.navMeshAgent.enabled = true;
     }
     public override void Update()
     {

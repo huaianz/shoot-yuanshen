@@ -8,7 +8,7 @@ public class ZombieIdleState : EnemyStateBase
     {
         base.Enter();
         enemyModel.PlayStateAnimation("Idle");
-        enemyModel.navMeshAgent.enabled = false;
+        enemyModel.navMeshAgent.velocity = Vector3.zero;
     }
 
     public override void Update()
