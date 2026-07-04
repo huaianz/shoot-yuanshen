@@ -33,4 +33,15 @@ public class EnemyStateBase : StateBase
     {
 
     }
+
+    /// <summary>
+    /// 动画是否播放完毕
+    /// </summary>
+    /// <param name="layer">动画层</param>
+    /// <returns></returns>
+    protected bool IsAnimationBreak(int layer)
+    {
+        AnimatorStateInfo Info = enemyModel.animator.GetCurrentAnimatorStateInfo(layer);
+        return Info.normalizedTime >= 1f && !enemyModel.animator.IsInTransition(layer);
+    }
 }

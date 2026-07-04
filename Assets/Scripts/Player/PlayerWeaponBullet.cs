@@ -28,12 +28,31 @@ public class PlayerWeaponBullet : MonoBehaviour
         Destroy(gameObject, lifeTime);
 
         prevposition = transform.position;
+        CheckInitalOverlap();
     }
 
     private void Update()
     {
         CheckCollision();
         prevposition = transform.position;
+    }
+
+    /// <summary>
+    /// 检查子弹是否生成在敌人的碰撞体内部
+    /// </summary>
+    void CheckInitalOverlap()
+    {
+        Collider[] hitColliders = Physics.OverlapSphere(transform.position, 0.1f);
+        foreach (var hitCollider in hitColliders)
+        {
+            EnemyBase enemy = hitCollider.GetComponent<EnemyBase>();
+            if (enemy != null)
+            {
+                enemy.Hurt(this, 1);
+                Destroy(gameObject);
+                return;
+            }
+        }
     }
 
     void CheckCollision()

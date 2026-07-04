@@ -46,6 +46,22 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     protected float slowMoveSpeed = 0.5f;
     protected Coroutine recoverSpeedCoroutine;//恢复速度的协程
     #endregion
+
+    #region 血条相关
+    [Tooltip("生命值")]
+    public int health = 100;
+    private float currentHealth;
+    private bool isDead = false;
+    [Tooltip("血条预制体")]
+    public GameObject healthBarPrefab;
+    [Tooltip("血条的位置")]
+    public Transform healthBarPos;
+    [HideInInspector]
+    public GameObject healthBar;//实例化后的血条
+    [Tooltip("血条框显示时间")]
+    public float healthBarShowTime = 4f;
+    private float healthBarShow_timer;
+    #endregion
     protected virtual void Awake()
     {
         stateMachine = new StateMachine(this);
@@ -56,14 +72,37 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
 
         hitHash = Animator.StringToHash("Hit");
         moveSpeedHash = Animator.StringToHash("MoveSpeed");
+        currentHealth = health;
+        healthBarShow_timer = healthBarShowTime;
     }
 
     protected virtual void Start()
     {
         SwitchState(EnemyState.Idle);
         FindAttackTarget();
+        #region 实例化血条框
+        healthBar = Instantiate(healthBarPrefab, healthBarPos.position, Quaternion.identity);
+        healthBar.transform.SetParent(UIManager.INSTANCE.WorldSpaceCanvas.transform);
+        #endregion
     }
 
+    protected virtual void Update()
+    {
+        if (isDead)
+            return;
+        #region 血条框显示
+        if (healthBarShow_timer < healthBarShowTime)
+        {
+            healthBar.SetActive(true);
+            healthBar.transform.position = healthBarPos.position;
+            healthBarShow_timer += Time.deltaTime;
+        }
+        else
+        {
+            healthBar.SetActive(false);
+        }
+        #endregion
+    }
     /// <summary>
     /// 寻找离自身最近的PlayerModel
     /// </summary>
@@ -137,6 +176,24 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         #region 生成流血滴落特效
         Destroy(Instantiate(bloodDrippingPrefab, transform.position + Vector3.up * 0.1f, Quaternion.Euler(0, 0, 0)), 3);
         #endregion
+
+        #region 血条相关
+        currentHealth -= bullet.damage * damageMultiplier;
+        if (currentHealth > 0)
+        {
+            healthBarShow_timer = 0;
+            healthBar.GetComponent<EnemyHealthBarUI>().UpdateHealthBar(currentHealth / health);
+        }
+        else
+        {
+            SwitchState(EnemyState.Dead);
+            navMeshAgent.enabled = false;
+            GetComponent<BoxCollider>().enabled = false;
+            currentHealth = 0;
+            isDead = true;
+            Destroy(healthBar);//销毁血条
+        }
+        #endregion
     }
 
     /// <summary>
@@ -187,5 +244,14 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     public void PlayStateAnimation(string animationName, float transition = 0.25f, int layer = 0)
     {
         animator.CrossFadeInFixedTime(animationName, transition, layer);
+    }
+
+    /// <summary>
+    /// 销毁敌人
+    /// </summary>
+    public void Clear()
+    {
+        stateMachine.Stop();
+        Destroy(gameObject);
     }
 }
