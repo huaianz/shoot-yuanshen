@@ -4,6 +4,7 @@ using System.Diagnostics;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
+using UnityEngine.AI;
 public enum PlayerState
 {
     Idle,
@@ -22,6 +23,7 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     //[HideInInspector]的作用是隐藏，因为在Awake中有获取组件
     [HideInInspector]
     public Animator animtor;
+    [HideInInspector]
     public CharacterController cc;
     private StateMachine stateMachine;//动画状态机
     private PlayerState currentState;//当前状态
@@ -49,22 +51,50 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     private int speedCache_index = 0;//缓存保存的位置
     private Vector3 averageDeltaMovement;//平均速度
     #endregion
+
+    #region 人机相关
+    [HideInInspector]
+    public NavMeshAgent navMeshAgent;
+    public float stoppingDistance = 2f;//停止跟随距离
+    #endregion
     private void Awake()
     {
         stateMachine = new StateMachine(this);
         animtor = GetComponent<Animator>();
         cc = GetComponent<CharacterController>();
+        navMeshAgent = GetComponent<NavMeshAgent>();
+        navMeshAgent.stoppingDistance = stoppingDistance;
+        navMeshAgent.angularSpeed = PlayerController.INSTANCE.rotationSpeed;
     }
 
     void Start()
     {
         SwitchState(PlayerState.Idle);
+        ExitAim();
     }
 
-    // Update is called once per frame
+
     void Update()
     {
 
+    }
+
+
+    /// <summary>
+    /// 进入模型
+    /// </summary>
+    public void Enter()
+    {
+        navMeshAgent.enabled = false;
+    }
+
+    /// <summary>
+    /// 退出模型
+    /// </summary>
+    public void Exit()
+    {
+        navMeshAgent.enabled = true;
+        SwitchState(PlayerState.Idle);
     }
 
     /// <summary>
@@ -138,5 +168,36 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
         }
         playerDeltaMovement.y = verticalSpeed * Time.deltaTime;
         cc.Move(playerDeltaMovement);
+    }
+
+    /// <summary>
+    /// 进入瞄准
+    /// </summary>
+    public void EnterAim()
+    {
+        //启动瞄准约束
+        rightHandAimConstraint.weight = 1;
+        BodyAimConstraint.weight = 1;
+        rightHandConstraint.weight = 0;
+    }
+
+    /// <summary>
+    /// 退出瞄准
+    /// </summary>
+    public void ExitAim()
+    {
+        rightHandAimConstraint.weight = 0;
+        BodyAimConstraint.weight = 0;
+        rightHandConstraint.weight = 1;
+    }
+
+    /// <summary>
+    /// 计算该模型与玩家当前所控制的模型的距离
+    /// </summary>
+    /// <returns></returns>
+
+    public float DistanceOfCurrentPlayerModel()
+    {
+        return Vector3.Distance(transform.position, PlayerController.INSTANCE.currentPlayerModel.transform.position);
     }
 }

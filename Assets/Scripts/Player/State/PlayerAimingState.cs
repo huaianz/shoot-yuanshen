@@ -65,7 +65,6 @@ public class PlayerAimingState : PlayerStateBase
             playerModel.animtor.SetFloat(aimingYHash, aimingY);
             #endregion
         }
-
     }
 
     public override void Exit()

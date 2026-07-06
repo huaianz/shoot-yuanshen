@@ -60,6 +60,7 @@ public class PlayerController : SingleMonoBase<PlayerController>
         Cursor.lockState = CursorLockMode.Locked;//锁定光标
         ExitAim();
         impulseSource = aimingCamera.GetComponent<CinemachineImpulseSource>();
+        ResetCameraTarget();
     }
 
     // Update is called once per frame
@@ -69,7 +70,7 @@ public class PlayerController : SingleMonoBase<PlayerController>
         moveIput = input.Player.Move.ReadValue<Vector2>().normalized;
         isSprint = input.Player.IsSprint.IsPressed();
         isAiming = input.Player.IsAiming.IsPressed();
-        isJumping = input.Player.IsJumping.IsPressed();
+        isJumping = input.Player.IsJumping.triggered;
         isFire = input.Player.Fire.IsPressed();
         #endregion
 
@@ -81,6 +82,35 @@ public class PlayerController : SingleMonoBase<PlayerController>
         //将世界空间下的方向向量转换为模型本地看空间下的方向向量
         localMovement = currentPlayerModel.transform.InverseTransformVector(worldMovement);
         #endregion
+
+        #region 切换角色输入监听
+        if (input.Player.First.triggered)
+        {
+            SwitchPlayerModel(0);
+        }
+        else if (input.Player.Second.triggered)
+        {
+            SwitchPlayerModel(1);
+        }
+        else if (input.Player.Third.triggered)
+        {
+            SwitchPlayerModel(2);
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// 切换角色
+    /// </summary>
+    /// <param name="index">下标</param>
+    public void SwitchPlayerModel(int index)
+    {
+        if (index >= GameManager.INSTANCE.playerModels.Length || GameManager.INSTANCE.playerModels[index] == null)
+            return;
+        currentPlayerModel.Exit();
+        currentPlayerModel = GameManager.INSTANCE.playerModels[index];
+        currentPlayerModel.Enter();
+        ResetCameraTarget();
     }
 
     /// <summary>
@@ -93,9 +123,7 @@ public class PlayerController : SingleMonoBase<PlayerController>
         aimingCamera.m_YAxis.Value = freeLookCamera.m_YAxis.Value;
 
         //启动瞄准约束
-        currentPlayerModel.rightHandAimConstraint.weight = 1;
-        currentPlayerModel.BodyAimConstraint.weight = 1;
-        currentPlayerModel.rightHandConstraint.weight = 0;
+        currentPlayerModel.EnterAim();
 
         //设置相机的优先级，使瞄准相机生效
         freeLookCamera.Priority = 0;
@@ -119,13 +147,22 @@ public class PlayerController : SingleMonoBase<PlayerController>
         freeLookCamera.m_YAxis.Value = aimingCamera.m_YAxis.Value;
 
         //关闭瞄准约束
-        currentPlayerModel.rightHandAimConstraint.weight = 0;
-        currentPlayerModel.BodyAimConstraint.weight = 0;
-        currentPlayerModel.rightHandConstraint.weight = 1;
+        currentPlayerModel.ExitAim();
 
         //设置相机的优先级，使瞄准相机生效
         freeLookCamera.Priority = 100;
         aimingCamera.Priority = 0;
+    }
+
+    /// <summary>
+    /// 重置摄像机瞄准位置
+    /// </summary>
+    public void ResetCameraTarget()
+    {
+        aimingCamera.Follow = currentPlayerModel.transform;
+        aimingCamera.LookAt = currentPlayerModel.transform;
+        freeLookCamera.Follow = currentPlayerModel.transform;
+        freeLookCamera.LookAt = currentPlayerModel.transform;
     }
 
     private void OnEnable()

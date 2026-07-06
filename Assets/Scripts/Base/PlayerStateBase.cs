@@ -46,7 +46,7 @@ public class PlayerStateBase : StateBase
         #endregion
 
         #region 瞄准状态监听
-        if (playerController.isAiming || playerController.isFire)
+        if (IsBeControl() && (playerController.isAiming || playerController.isFire))
         {
             playerModel.SwitchState(PlayerState.Aiming);
         }
