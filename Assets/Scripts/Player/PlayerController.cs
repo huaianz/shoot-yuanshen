@@ -57,8 +57,10 @@ public class PlayerController : SingleMonoBase<PlayerController>
     void Start()
     {
         cameraTransform = Camera.main.transform;
-        Cursor.lockState = CursorLockMode.Locked;//锁定光标
+        //Cursor.lockState = CursorLockMode.Locked;//锁定光标
         ExitAim();
+        //默认状态下进入瞄准
+        // EnterAim();
         impulseSource = aimingCamera.GetComponent<CinemachineImpulseSource>();
         ResetCameraTarget();
     }

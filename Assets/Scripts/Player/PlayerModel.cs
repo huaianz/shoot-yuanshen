@@ -71,6 +71,7 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     {
         SwitchState(PlayerState.Idle);
         ExitAim();
+
     }
 
 
