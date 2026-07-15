@@ -24,6 +24,10 @@ public class CharacterPanelUI : MonoBehaviour
     public GameObject DataImage;
     #endregion
 
+    #region 头像按钮资源
+    public GameObject HeadObject;
+    private Image HeadImage;
+    #endregion
     private void Start()
     {
         #region 默认状态
@@ -67,8 +71,12 @@ public class CharacterPanelUI : MonoBehaviour
                 (DataPanel, DataImage)
             );
         });
+        #endregion
+
+        #region 获取头像资源
+        HeadObject = Resources.Load<GameObject>("Prefabs/Package/Left/back Image");
+        #endregion
     }
-    #endregion
 
 
 }
