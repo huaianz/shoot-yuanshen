@@ -29,3 +29,22 @@ public enum WeaponType
     九八K狙击枪,
     半自动狙击步枪,
 }
+
+/// <summary>
+/// 背包当前模式
+/// </summary>
+public enum PackageMode
+{
+    normal,
+    delete,
+    sort,
+}
+
+/// <summary>
+/// 物品类型
+/// </summary>
+public enum ItemType
+{
+    Weapon,
+    Food
+}

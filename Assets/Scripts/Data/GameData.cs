@@ -29,7 +29,7 @@ public class Character
 }
 
 /// <summary>
-/// 武器数据
+/// 武器类
 /// </summary>
 [Serializable]
 public class Weapon
@@ -44,7 +44,47 @@ public class Weapon
     public int Stars;
     [Header("武器详细信息")]
     public string weaponDescription;
+    [Header("武器物品图片路径")]
+    public string iconPath;
 
 }
+
+/// <summary>
+/// 食物类
+/// </summary>
+[Serializable]
+public class Food
+{
+    public int foodID;
+    public string foodName;
+    public int healAmount;//回复生命值
+    public int maxStack = 99;
+    public string description;
+    public string iconPath;
+
+
+}
+
+/// <summary>
+/// 运行时的实际武器数据
+/// </summary>
+[Serializable]
+public class WeaponItem : ItemBase
+{
+    //目前没有额外的字段   
+}
+
+[Serializable]
+public class FoodItem : ItemBase
+{
+    public int count = 1;
+    //强制没有拥有者
+    public FoodItem()
+    {
+        ownerID = -1;
+    }
+}
+
+
 
 

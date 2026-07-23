@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[PreferBinarySerialization]
+[PreferBinarySerialization]//将资产编译成二进制格式
 [CreateAssetMenu(fileName = "NewWeaponData", menuName = "Game/WeaponData")]
 public class WeaponData_SO : ScriptableObject
 {
