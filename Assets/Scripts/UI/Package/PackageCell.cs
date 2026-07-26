@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -9,66 +10,145 @@ using UnityEngine.UI;
 public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
     #region 物品UI子对象
-    private Transform UIIcon;
-    private Transform UIHead;
-    private Transform UINew;
-    private Transform UISelect;
-    private Transform UIStars;
-    private Transform UIDeleteSelect;
+    private Image iconImage;
+    private GameObject newMark;
+    private GameObject deleteSelectMark;
+    //存放星级的容器
+    private Transform starContainer;
+    //存放星级的GameObject数组
+    private GameObject[] starObjects;
+
     #endregion
 
     #region 动画相关的
-    private Transform UISelectAni;
-    private Transform UIMouseOverAni;
+    private Animator selectAnimator;
+    private Animator mouseOverAnimator;
     #endregion
 
     #region 数据相关
-    private PackageLocalItem packageLocalItem;
-    private PackageItem packageItem;
+    //当前的格子数据
+    private ItemBase itemData;
+    //对应的物品模版
+    private object templateData;
     private PackagePanel uiParent;
     #endregion
 
     private void Awake()
     {
-        //找到UI子对象
-        InitUIName();
+        //存放所有UI组件
+        CacheUIReferences();
+        //缓存星级子物体
+        CacheStarChildren();
+        //初始化隐藏动画和删除标记
+        if (selectAnimator != null)
+        {
+            selectAnimator.gameObject.SetActive(false);
+        }
+        if (mouseOverAnimator != null)
+        {
+            mouseOverAnimator.gameObject.SetActive(false);
+        }
+        if (deleteSelectMark != null)
+        {
+            deleteSelectMark.SetActive(false);
+        }
     }
 
     /// <summary>
-    /// 根据相对路径查找一些UI子物体
+    /// 缓存UI组件
     /// </summary>
-    private void InitUIName()
+    private void CacheUIReferences()
     {
-        UIIcon = transform.Find("Top/icon");
-        UIHead = transform.Find("Top/Head");
-        UINew = transform.Find("Top/New");
-        UIStars = transform.Find("Bottom/Stars");
-        UISelect = transform.Find("Select");
-        UIDeleteSelect = transform.Find("DeleteSelect");
-        UIMouseOverAni = transform.Find("MouseOverAni");
-        UISelectAni = transform.Find("SelectAni");
-        UIDeleteSelect.gameObject.SetActive(false);
-        UIMouseOverAni.gameObject.SetActive(false);
-        UISelectAni.gameObject.SetActive(false);
+        //图标
+        var iconTrans = transform.Find("Top/icon");
+        if (iconTrans != null)
+        {
+            iconImage = iconTrans.GetComponent<Image>();
+        }
+        //new
+        var newTrans = transform.Find("Top/New");
+        if (newTrans != null)
+        {
+            newMark = newTrans.gameObject;
+        }
+        //星级容器
+        starContainer = transform.Find("Bottom/Stars");
+        //删除选择框
+        var deleteTrans = transform.Find("DeleteSelect");
+        if (deleteTrans != null)
+        {
+            deleteSelectMark = deleteTrans.gameObject;
+        }
+
+        //动画组件
+        var selectAniTrans = transform.Find("SelectAni");
+        if (selectAniTrans != null)
+        {
+            selectAnimator = selectAniTrans.GetComponent<Animator>();
+        }
+
+        var mouseOverAniTrans = transform.Find("MouseOverAni");
+        if (mouseOverAniTrans != null)
+        {
+            mouseOverAnimator = mouseOverAniTrans.GetComponent<Animator>();
+        }
     }
 
     /// <summary>
-    /// 更新格子显示
+    /// 缓存星星子物体
     /// </summary>
-    /// <param name="packageLocalData"></param>
-    /// <param name="uiParent"></param>
-    public void Refresh(PackageLocalItem packageLocalItem, PackagePanel uiParent)
+    private void CacheStarChildren()
     {
-        //数据初始化，本地和列表的数据
-        this.packageLocalItem = packageLocalItem;
-        this.packageItem = GameManager.INSTANCE.GetPackageItemById(packageLocalItem.id);
-        this.uiParent = uiParent;
-        UINew.gameObject.SetActive(this.packageLocalItem.isNew);
-        //获取物品的图片
-        Texture2D t = (Texture2D)Resources.Load(this.packageItem.imagePath);
-        Sprite temp = Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0, 0));
-        UIIcon.GetComponent<Image>().sprite = temp;
-        //刷新星级
+        if (starContainer == null)
+        {
+            return;
+        }
+        int count = starContainer.childCount;
+        starObjects = new GameObject[count];
+        for (int i = 0; i < count; i++)
+        {
+            var child = starContainer.GetChild(i);
+            if (child != null)
+            {
+                starObjects[i] = child.gameObject;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 刷新显示
+    /// </summary>
+    /// <param name="itemData"></param>
+    /// <param name="uiPrent"></param>
+    public void Refresh(ItemBase itemData, PackagePanel uiPrent)
+    {
+        this.itemData = itemData;
+        this.uiParent = uiPrent;
+
+        //根据类型获取模版数据
+        if (itemData is WeaponItem weapon)
+        {
+            templateData = InventoryManager.INSTANCE.weaponData?.GetWeaponByID(weapon.itemID);
+        }
+        else if (itemData is FoodItem food)
+        {
+            templateData = InventoryManager.INSTANCE.foodData?.GetFoodByID(food.itemID);
+        }
+        else
+        {
+            templateData = null;
+        }
+
+        if (newMark != null)
+        {
+            newMark.SetActive(itemData.isNew);
+        }
+
+        Sprite icon = InventoryManager.INSTANCE.GetIcon(itemData.itemID);
+        if (iconImage != null)
+        {
+            iconImage.sprite = icon;
+        }
         RefreshStars();
     }
 
@@ -77,63 +157,85 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
     /// </summary>
     public void RefreshStars()
     {
-        for (int i = 0; i < UIStars.childCount; i++)
+        if (starObjects == null || starObjects.Length == 0)
         {
-            Transform star = UIStars.GetChild(i);
-            if (this.packageItem.star > i)
+            return;
+        }
+        //先获取星级数值
+        int starCount = 0;
+        if (templateData is Weapon weapon)
+        {
+            starCount = weapon.Stars;
+        }
+        else if (templateData is Food food)
+        {
+            //DOTO:食物模版中暂时没有添加星级
+        }
+
+        //用缓存数组一次性设置
+        for (int i = 0; i < starObjects.Length; i++)
+        {
+            if (starObjects[i] != null)
             {
-                star.gameObject.SetActive(true);
-            }
-            else
-            {
-                star.gameObject.SetActive(false);
+                starObjects[i].SetActive(i < starCount);
             }
         }
     }
+
+
 
     /// <summary>
     /// 刷新删除状态模式下的选中状态
     /// </summary>
     public void RefreshDeleteState()
     {
-        if (this.uiParent.currentMode == PackageMode.delete)
+        if (uiParent == null || deleteSelectMark == null)
         {
-            //将选中的加入到删除列表
-            this.uiParent.AddChooseDeleteUid(this.packageLocalItem.uid);
+            return;
         }
-        else
-        {
-            this.UIDeleteSelect.gameObject.SetActive(false);
-        }
+        bool shouldShow = (uiParent.currentMode == PackageMode.delete) && uiParent.deleteChooseUid.Contains(itemData.instanceID);
+        deleteSelectMark.SetActive(shouldShow);
     }
 
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (this.uiParent.currentMode == PackageMode.delete)
+        if (uiParent.currentMode == PackageMode.delete)
         {
-            this.uiParent.AddChooseDeleteUid(this.packageLocalItem.uid);
+            uiParent.AddChooseDeleteUid(itemData.instanceID);
+            return;
         }
-        if (this.uiParent.chooseUID == this.packageLocalItem.uid)
+        //如果已经被选择，则返回
+        if (uiParent.chooseUID == itemData.instanceID)
         {
             return;
         }
-        //触发动画
-        this.uiParent.chooseUID = this.packageLocalItem.uid;
-        UISelectAni.gameObject.SetActive(true);
-        UISelectAni.GetComponent<Animator>().SetTrigger("In");
+        //触发选择动画
+        uiParent.chooseUID = itemData.instanceID;
+        if (selectAnimator != null)
+        {
+            selectAnimator.gameObject.SetActive(true);
+            selectAnimator.SetTrigger("In");
+        }
+
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        UIMouseOverAni.gameObject.SetActive(true);
-        UIMouseOverAni.GetComponent<Animator>().SetTrigger("In");
+        if (mouseOverAnimator != null)
+        {
+            mouseOverAnimator.gameObject.SetActive(true);
+            mouseOverAnimator.SetTrigger("In");
+        }
     }
 
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        UIMouseOverAni.GetComponent<Animator>().SetTrigger("Out");
+        if (mouseOverAnimator != null)
+        {
+            mouseOverAnimator.SetTrigger("Out");
+        }
     }
 
     /// <summary>
@@ -141,11 +243,17 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
     /// </summary>
     public void OnSelectAniInCb()
     {
-        UISelectAni.gameObject.SetActive(false);
+        if (selectAnimator != null)
+        {
+            selectAnimator.gameObject.SetActive(false);
+        }
     }
 
     public void OnMouseOverAniOutCb()
     {
-        UIMouseOverAni.gameObject.SetActive(false);
+        if (mouseOverAnimator != null)
+        {
+            mouseOverAnimator.gameObject.SetActive(false);
+        }
     }
 }

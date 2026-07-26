@@ -5,7 +5,7 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "NewFoodData", menuName = "Game/FoodData")]
 public class FoodData_SO : ScriptableObject
 {
-    public List<Food> foofList;
+    public List<Food> foodList;
     private Dictionary<int, Food> _cacheDict;
 
     public Food GetFoodByID(int id)
@@ -13,7 +13,7 @@ public class FoodData_SO : ScriptableObject
         if (_cacheDict == null || _cacheDict.Count == 0)
         {
             _cacheDict = new Dictionary<int, Food>();
-            foreach (var f in foofList)
+            foreach (var f in foodList)
             {
                 if (!_cacheDict.ContainsKey(f.foodID))
                 {
