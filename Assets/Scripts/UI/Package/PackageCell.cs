@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -11,12 +12,14 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
 {
     #region 物品UI子对象
     private Image iconImage;
-    private GameObject newMark;
+    private Image newMark;
     private GameObject deleteSelectMark;
+    private Transform UISelect;
     //存放星级的容器
     private Transform starContainer;
     //存放星级的GameObject数组
     private GameObject[] starObjects;
+    private TextMeshProUGUI nameText;
 
     #endregion
 
@@ -27,7 +30,7 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
 
     #region 数据相关
     //当前的格子数据
-    private ItemBase itemData;
+    public ItemBase itemData;
     //对应的物品模版
     private object templateData;
     private PackagePanel uiParent;
@@ -52,6 +55,10 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
         {
             deleteSelectMark.SetActive(false);
         }
+        if (UISelect != null)
+        {
+            UISelect.gameObject.SetActive(false);
+        }
     }
 
     /// <summary>
@@ -69,8 +76,10 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
         var newTrans = transform.Find("Top/New");
         if (newTrans != null)
         {
-            newMark = newTrans.gameObject;
+            newMark = newTrans.GetComponent<Image>();
         }
+        //选中
+        UISelect = transform.Find("Select");
         //星级容器
         starContainer = transform.Find("Bottom/Stars");
         //删除选择框
@@ -91,6 +100,11 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
         if (mouseOverAniTrans != null)
         {
             mouseOverAnimator = mouseOverAniTrans.GetComponent<Animator>();
+        }
+        var Text = transform.Find("Bottom/nameText");
+        if (Text != null)
+        {
+            nameText = Text.GetComponent<TextMeshProUGUI>();
         }
     }
 
@@ -122,6 +136,8 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
     /// <param name="uiPrent"></param>
     public void Refresh(ItemBase itemData, PackagePanel uiPrent)
     {
+        //重置选中状态
+        deleteSelect();
         this.itemData = itemData;
         this.uiParent = uiPrent;
 
@@ -141,13 +157,17 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
 
         if (newMark != null)
         {
-            newMark.SetActive(itemData.isNew);
+            newMark.gameObject.SetActive(itemData.isNew);
         }
 
         Sprite icon = InventoryManager.INSTANCE.GetIcon(itemData.itemID);
         if (iconImage != null)
         {
             iconImage.sprite = icon;
+        }
+        if (nameText != null)
+        {
+            nameText.text = InventoryManager.INSTANCE.GetItemName(itemData.itemID);
         }
         RefreshStars();
     }
@@ -197,7 +217,36 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
         deleteSelectMark.SetActive(shouldShow);
     }
 
+    /// <summary>
+    /// 选中
+    /// </summary>
+    public void Select()
+    {
+        if (UISelect != null)
+        {
+            UISelect.gameObject.SetActive(true);
+            if (selectAnimator != null)
+            {
+                selectAnimator.gameObject.SetActive(true);
+                selectAnimator.SetTrigger("In");
+            }
+        }
+    }
 
+    /// <summary>
+    /// 取消选中
+    /// </summary>
+    private void deleteSelect()
+    {
+        if (UISelect != null)
+        {
+            UISelect.gameObject.SetActive(false);
+            if (selectAnimator != null)
+            {
+                selectAnimator.gameObject.SetActive(false);
+            }
+        }
+    }
     public void OnPointerClick(PointerEventData eventData)
     {
         if (uiParent.currentMode == PackageMode.delete)
@@ -205,19 +254,35 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
             uiParent.AddChooseDeleteUid(itemData.instanceID);
             return;
         }
-        //如果已经被选择，则返回
-        if (uiParent.chooseUID == itemData.instanceID)
+        string currentUID = uiParent.chooseUID;
+        if (currentUID == itemData.instanceID)
         {
+            deleteSelect();
+            uiParent.chooseUID = null;
             return;
         }
-        //触发选择动画
-        uiParent.chooseUID = itemData.instanceID;
-        if (selectAnimator != null)
+        if (!string.IsNullOrEmpty(currentUID))
         {
-            selectAnimator.gameObject.SetActive(true);
-            selectAnimator.SetTrigger("In");
+            PackageCell oldCell = uiParent.FindCellByUID(currentUID);
+            if (oldCell != null)
+            {
+                oldCell.deleteSelect();
+            }
         }
-
+        //选中当前物品时，消除新的标志
+        if (itemData.isNew)
+        {
+            InventoryManager.INSTANCE.MarkAsViewed(itemData.instanceID);
+            //刷新当前格子显示
+            if (newMark != null)
+            {
+                newMark.gameObject.SetActive(false);
+            }
+            itemData.isNew = false;
+        }
+        //触发选择动画
+        Select();
+        uiParent.chooseUID = itemData.instanceID;
     }
 
     public void OnPointerEnter(PointerEventData eventData)

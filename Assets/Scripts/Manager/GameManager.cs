@@ -11,6 +11,10 @@ public class GameManager : SingleMonoBase<GameManager>
     private bool _sortedDirty = true;
     #endregion
 
+    private void Start()
+    {
+
+    }
     /// <summary>
     /// 批量删除物品
     /// </summary>

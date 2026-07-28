@@ -18,8 +18,8 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     #endregion
 
     #region 哈希集合存储ID
-    private HashSet<string> _weaponIds = new HashSet<string>();
-    private HashSet<string> _foodIds = new HashSet<string>();
+    public HashSet<string> _weaponIds = new HashSet<string>();
+    public HashSet<string> _foodIds = new HashSet<string>();
     private HashSet<string> _newItemIds = new HashSet<string>();
     #endregion
 
@@ -36,7 +36,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     private List<FoodItem> _cachedFoodList = new List<FoodItem>();
     private List<ItemBase> _cachedAllItems = new List<ItemBase>();
     private bool _allItemsCacheDirty = true;
-
+    private Dictionary<int, string> _itemNameCache = new Dictionary<int, string>();
     #endregion
 
     //新武器缓存（模版id,数量）
@@ -240,31 +240,64 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             {
                 //先从角色身上卸载下来
                 UnequipWeapon(weapon.ownerID);
-                //如果是新武器，就从新武器计数里减一
-                if (weapon.isNew && _newWeaponCount.TryGetValue(weapon.itemID, out int cnt) && cnt > 0)
-                {
-                    _newWeaponCount[weapon.itemID] -= 1;
-                }
-                _allItems.Remove(instanceID);
-                _weaponIds.Remove(instanceID);
-                _newItemIds.Remove(instanceID);
             }
-            else if (item is FoodItem food)
+            //如果是新武器，就从新武器计数里减一
+            if (weapon.isNew && _newWeaponCount.TryGetValue(weapon.itemID, out int cnt) && cnt > 0)
             {
-                _allItems.Remove(instanceID);
-                _foodIds.Remove(instanceID);
-                _newItemIds.Remove(instanceID);
-                if (_foodToInstanceId.TryGetValue(food.itemID, out string mappedId) && mappedId == instanceID)
-                {
-                    _foodToInstanceId.Remove(food.itemID);
-                }
+                _newWeaponCount[weapon.itemID] -= 1;
             }
-
-            _isDirty = true;
-            _allItemsCacheDirty = true;
+            _allItems.Remove(instanceID);
+            _weaponIds.Remove(instanceID);
+            if (weapon.isNew)
+            {
+                _newItemIds.Remove(instanceID);
+            }
         }
+        else if (item is FoodItem food)
+        {
+            _allItems.Remove(instanceID);
+            _foodIds.Remove(instanceID);
+            if (food.isNew)
+            {
+                _newItemIds.Remove(instanceID);
+            }
+            if (_foodToInstanceId.TryGetValue(food.itemID, out string mappedId) && mappedId == instanceID)
+            {
+                _foodToInstanceId.Remove(food.itemID);
+            }
+        }
+        else
+        {
+            return;
+        }
+
+        _isDirty = true;
+        _allItemsCacheDirty = true;
     }
 
+    public string GetItemName(int itemID)
+    {
+        if (_itemNameCache.TryGetValue(itemID, out string cachedName))
+        {
+            return cachedName;
+        }
+        string name = null;
+        var weapon = weaponData?.GetWeaponByID(itemID);
+        if (weapon != null)
+        {
+            name = weapon.weaponName;
+        }
+        else
+        {
+            var food = foodData?.GetFoodByID(itemID);
+            if (food != null)
+            {
+                name = food.foodName;
+            }
+        }
+        _itemNameCache[itemID] = name;
+        return name;
+    }
     #endregion
 
     #region 装备系统
@@ -571,17 +604,65 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     /// <summary>
     /// 异步存盘
     /// </summary>
+    // private async void SaveData()
+    // {
+    //     if (!_isDirty || _isSaving)
+    //     {
+    //         return;
+    //     }
+    //     _isDirty = false;
+    //     _isSaving = true;
+
+    //     var list = _allItems.Values.ToList();
+    //     byte[] data = MessagePackSerializer.Serialize(list);
+
+    //     await Task.Run(() =>
+    //     {
+    //         using (var fs = new FileStream(_savePath, FileMode.Create))
+    //         {
+    //             fs.Write(data, 0, data.Length);
+    //         }
+    //     });
+
+    //     _isSaving = false;
+    // }
+
+
     private async void SaveData()
     {
-        if (!_isDirty || _isSaving)
-        {
-            return;
-        }
+        if (!_isDirty || _isSaving) return;
         _isDirty = false;
         _isSaving = true;
 
-        var list = _allItems.Values.ToList();
-        byte[] data = MessagePackSerializer.Serialize(list);
+        // 构建可序列化的数据
+        SaveData1 saveData = new SaveData1();
+        foreach (var kvp in _allItems)
+        {
+            var item = kvp.Value;
+            SerializableItem serializable = new SerializableItem
+            {
+                instanceID = item.instanceID,
+                templateID = item.itemID,
+                isNew = item.isNew,
+                ownerID = item.ownerID,
+            };
+
+            if (item is WeaponItem)
+            {
+                serializable.type = "Weapon";
+                serializable.count = 0;
+            }
+            else if (item is FoodItem food)
+            {
+                serializable.type = "Food";
+                serializable.count = food.count;
+            }
+            saveData.items.Add(serializable);
+        }
+
+        // 序列化为 JSON
+        string json = JsonUtility.ToJson(saveData, true);
+        byte[] data = System.Text.Encoding.UTF8.GetBytes(json);
 
         await Task.Run(() =>
         {
@@ -594,21 +675,23 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
         _isSaving = false;
     }
 
-    /// <summary>
-    /// 读档
-    /// </summary>
     private void LoadData()
     {
-        if (!File.Exists(_savePath))
-        {
-            return;
-        }
+        if (!File.Exists(_savePath)) return;
 
         try
         {
             byte[] rawData = File.ReadAllBytes(_savePath);
-            var list = MessagePackSerializer.Deserialize<List<ItemBase>>(rawData);
+            string json = System.Text.Encoding.UTF8.GetString(rawData);
+            SaveData1 saveData = JsonUtility.FromJson<SaveData1>(json);
 
+            if (saveData == null || saveData.items == null)
+            {
+                Debug.LogWarning("读档数据为空");
+                return;
+            }
+
+            // 清空现有数据
             _allItems.Clear();
             _weaponIds.Clear();
             _foodIds.Clear();
@@ -618,50 +701,155 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             _newWeaponCount.Clear();
             _allItemsCacheDirty = true;
 
-            foreach (var item in list)
+            foreach (var serializable in saveData.items)
             {
-                //食物修正持有者
-                if (item is FoodItem && item.ownerID != -1)
+                ItemBase item;
+                if (serializable.type == "Weapon")
                 {
-                    item.ownerID = -1;
+                    item = new WeaponItem
+                    {
+                        instanceID = serializable.instanceID,
+                        itemID = serializable.templateID,
+                        isNew = serializable.isNew,
+                        ownerID = serializable.ownerID
+                    };
                 }
+                else if (serializable.type == "Food")
+                {
+                    item = new FoodItem
+                    {
+                        instanceID = serializable.instanceID,
+                        itemID = serializable.templateID,
+                        isNew = serializable.isNew,
+                        ownerID = -1,  // 食物强制 -1
+                        count = serializable.count
+                    };
+                }
+                else
+                {
+                    continue;
+                }
+
                 _allItems[item.instanceID] = item;
+
                 if (item is WeaponItem)
                 {
                     _weaponIds.Add(item.instanceID);
                     if (item.ownerID >= 0)
-                    {
                         _roleWeapon[item.ownerID] = item.instanceID;
-                    }
                     if (item.isNew)
                     {
                         int tid = item.itemID;
                         if (!_newWeaponCount.ContainsKey(tid))
-                        {
-                            _newWeaponCount[tid] = _newWeaponCount[tid]++;
-                        }
+                            _newWeaponCount[tid] = 0;
+                        _newWeaponCount[tid]++;
                     }
                 }
                 else if (item is FoodItem food)
                 {
                     _foodIds.Add(item.instanceID);
                     if (!_foodToInstanceId.ContainsKey(item.itemID))
-                    {
                         _foodToInstanceId[item.itemID] = item.instanceID;
-                    }
                 }
 
                 if (item.isNew)
-                {
                     _newItemIds.Add(item.instanceID);
-                }
             }
+
             Debug.Log($"读档成功！共加载 {_allItems.Count} 个物品");
         }
         catch (Exception e)
         {
             Debug.LogError($"读档失败：{e.Message}");
         }
+    }
+
+    /// <summary>
+    /// 读档
+    /// </summary>
+    // private void LoadData()
+    // {
+    //     if (!File.Exists(_savePath))
+    //     {
+    //         return;
+    //     }
+
+    //     try
+    //     {
+    //         byte[] rawData = File.ReadAllBytes(_savePath);
+    //         var list = MessagePackSerializer.Deserialize<List<ItemBase>>(rawData);
+
+    //         _allItems.Clear();
+    //         _weaponIds.Clear();
+    //         _foodIds.Clear();
+    //         _newItemIds.Clear();
+    //         _foodToInstanceId.Clear();
+    //         _roleWeapon.Clear();
+    //         _newWeaponCount.Clear();
+    //         _allItemsCacheDirty = true;
+
+    //         foreach (var item in list)
+    //         {
+    //             //食物修正持有者
+    //             if (item is FoodItem && item.ownerID != -1)
+    //             {
+    //                 item.ownerID = -1;
+    //             }
+    //             _allItems[item.instanceID] = item;
+    //             if (item is WeaponItem)
+    //             {
+    //                 _weaponIds.Add(item.instanceID);
+    //                 if (item.ownerID >= 0)
+    //                 {
+    //                     _roleWeapon[item.ownerID] = item.instanceID;
+    //                 }
+    //                 if (item.isNew)
+    //                 {
+    //                     int tid = item.itemID;
+    //                     if (!_newWeaponCount.ContainsKey(tid))
+    //                     {
+    //                         _newWeaponCount[tid] = _newWeaponCount[tid]++;
+    //                     }
+    //                 }
+    //             }
+    //             else if (item is FoodItem food)
+    //             {
+    //                 _foodIds.Add(item.instanceID);
+    //                 if (!_foodToInstanceId.ContainsKey(item.itemID))
+    //                 {
+    //                     _foodToInstanceId[item.itemID] = item.instanceID;
+    //                 }
+    //             }
+
+    //             if (item.isNew)
+    //             {
+    //                 _newItemIds.Add(item.instanceID);
+    //             }
+    //         }
+    //         Debug.Log($"读档成功！共加载 {_allItems.Count} 个物品");
+    //     }
+    //     catch (Exception e)
+    //     {
+    //         Debug.LogError($"读档失败：{e.Message}");
+    //     }
+    // }
+
+    [System.Serializable]
+    public class SerializableItem
+    {
+        public string type;          // "Weapon" 或 "Food"
+        public string instanceID;
+        public int templateID;
+        public bool isNew;
+        public int ownerID;
+        public int count;            // 仅食物使用，武器为0
+    }
+
+
+    [System.Serializable]
+    public class SaveData1
+    {
+        public List<SerializableItem> items = new List<SerializableItem>();
     }
     #endregion
 }
