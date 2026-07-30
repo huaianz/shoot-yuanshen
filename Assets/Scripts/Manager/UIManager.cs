@@ -114,5 +114,4 @@ public class UIManager : SingleMonoBase<UIManager>
     }
     #endregion
 
-
 }

@@ -21,6 +21,10 @@ public class Character
     public string description;
     [Header("角色佩戴武器")]
     public int weaponID;
+    [Header("角色头像路径")]
+    public string avatarPath;
+    [Header("角色背景视频路径")]
+    public string videoPath;
     [Header("角色详细信息")]
     public string birthday;
     public string address;
@@ -82,6 +86,51 @@ public class FoodItem : ItemBase
     public FoodItem()
     {
         ownerID = -1;
+    }
+}
+
+[System.Serializable]
+public class RoleData
+{
+    public int roleID;
+    public string roleName;
+    public Sprite avatar;
+    public float baseHealth = 100f;
+    public float baseAttack = 10f;
+    public float baseDefence = 5f;
+    public float moveSpeed = 5f;
+    public string birthday = "未知";
+    public string address = "未知";
+    public string constellation = "未知";
+    public string information = "未知";
+    public int level = 1;
+}
+
+public class RoleRuntimeData
+{
+    public int roleID;
+    public Character baseData;
+    public float currentHealth;
+    public float currentArmor;
+    public float currentStamina;
+    // 缓存最终战斗属性
+    public float finalAttack;
+    public float finalDefense;
+    public float finalMoveSpeed;
+    public float finalMaxHealth;
+    public float finalMaxArmor;
+
+    public bool isDirty = true;
+    public string equippedWeaponId;
+
+    public RoleRuntimeData(Character character)
+    {
+        roleID = character.characterID;
+        baseData = character;
+        currentHealth = character.characterHP;
+        currentArmor = character.characterDEF;
+        currentStamina = 100f;
+        isDirty = true;
     }
 }
 

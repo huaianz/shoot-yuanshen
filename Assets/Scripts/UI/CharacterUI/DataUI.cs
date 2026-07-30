@@ -14,21 +14,68 @@ public class DataUI : MonoBehaviour
     public TextMeshProUGUI constellationText;
     public TextMeshProUGUI informationText;
 
-    private void Start()
+    public void RefreshUI(int roleID = -1)
     {
-        //初始化   
-        InitData();
+        if (roleID < 0)
+        {
+            roleID = GameManager.INSTANCE.GetActiveRoleID();
+        }
+
+        if (roleID < 0)
+        {
+            ClearDataDisplay();
+            return;
+        }
+        var roleData = GameManager.INSTANCE.GetRoleData(roleID);
+        if (roleData == null)
+        {
+            ClearDataDisplay();
+            return;
+        }
+        var baseData = roleData.baseData;
+        if (nameText != null)
+        {
+            nameText.text = baseData.characterName;
+        }
+        if (birthdayText != null)
+        {
+            birthdayText.text = baseData.birthday;
+        }
+        if (affText != null)
+        {
+            affText.text = baseData.address;
+        }
+        if (constellationText != null)
+        {
+            constellationText.text = baseData.constellation;
+        }
+        if (informationText != null)
+        {
+            informationText.text = baseData.information;
+        }
     }
 
-    /// <summary>
-    /// 初始化资料界面
-    /// </summary>
-    public void InitData()
+    public void ClearDataDisplay()
     {
-        nameText.text = Player.INSTANCE.currentCharacter.characterName;
-        birthdayText.text = Player.INSTANCE.currentCharacter.birthday;
-        affText.text = Player.INSTANCE.currentCharacter.address;
-        constellationText.text = Player.INSTANCE.currentCharacter.constellation;
-        informationText.text = Player.INSTANCE.currentCharacter.information;
+        if (nameText != null)
+        {
+            nameText.text = "未知";
+        }
+        if (birthdayText != null)
+        {
+            birthdayText.text = "";
+        }
+        if (affText != null)
+        {
+            affText.text = "";
+        }
+        if (constellationText != null)
+        {
+            constellationText.text = "";
+        }
+        if (informationText != null)
+        {
+            informationText.text = "";
+        }
     }
 }

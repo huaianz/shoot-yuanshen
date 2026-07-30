@@ -6,6 +6,17 @@ public class GameManager : SingleMonoBase<GameManager>
 {
     public PlayerModel[] playerModels;
 
+    [Header("角色数据")]
+    public PlayerData_SO playerData_SO;
+
+    private Dictionary<int, RoleRuntimeData> _roleDataDict = new Dictionary<int, RoleRuntimeData>();
+    private int _currentActiveRoleID = -1;
+    //角色切换时通知UI的事件
+    public System.Action<int> OnActiveRoleChanged;
+    //缓存列表
+    private List<RoleRuntimeData> _cachedRoleList = new List<RoleRuntimeData>();
+
+    private Dictionary<int, Sprite> _avatarCache = new Dictionary<int, Sprite>();
     #region 排序缓存
     private List<ItemBase> _sortedCache = new List<ItemBase>();
     private bool _sortedDirty = true;
@@ -13,7 +24,8 @@ public class GameManager : SingleMonoBase<GameManager>
 
     private void Start()
     {
-
+        //初始化角色系统
+        InitRoles();
     }
     /// <summary>
     /// 批量删除物品
@@ -207,6 +219,139 @@ public class GameManager : SingleMonoBase<GameManager>
     public List<ItemBase> GetFoodItems()
     {
         return new List<ItemBase>(InventoryManager.INSTANCE.GetAllFoods());
+    }
+    #endregion
+
+    #region 角色管理
+    /// <summary>
+    /// 初始化所有角色
+    /// </summary>
+    public void InitRoles()
+    {
+        _roleDataDict.Clear();
+        if (playerData_SO == null)
+        {
+            return;
+        }
+        foreach (var character in playerData_SO.characterList)
+        {
+            var runtime = new RoleRuntimeData(character);
+            if (character.weaponID > 0)
+            {
+                runtime.equippedWeaponId = character.weaponID.ToString();
+            }
+            _roleDataDict[character.characterID] = runtime;
+        }
+
+        //默认第一个角色上阵
+        if (_roleDataDict.Count > 0)
+        {
+            var first = _roleDataDict.Values.GetEnumerator();
+            first.MoveNext();
+            SetActiveRole(first.Current.roleID);
+        }
+
+    }
+
+    /// <summary>
+    /// 设置当前上阵角色
+    /// </summary>
+    /// <param name="roleID"></param>
+    public void SetActiveRole(int roleID)
+    {
+        if (_currentActiveRoleID == roleID)
+        {
+            return;
+        }
+        _currentActiveRoleID = roleID;
+        MarkRoleStatsDirty(roleID);
+        OnActiveRoleChanged?.Invoke(roleID);
+    }
+
+    public int GetActiveRoleID()
+    {
+        return _currentActiveRoleID;
+    }
+
+
+    /// <summary>
+    /// 获取指定角色的运行时的数据
+    /// </summary>
+    /// <param name="roleID"></param>
+    /// <returns></returns>
+    public RoleRuntimeData GetRoleData(int roleID)
+    {
+        _roleDataDict.TryGetValue(roleID, out var data);
+        return data;
+    }
+
+    /// <summary>
+    /// 获取所有角色运行时的数据
+    /// </summary>
+    /// <returns></returns>
+    public List<RoleRuntimeData> GetAllRoles()
+    {
+        _cachedRoleList.Clear();
+        _cachedRoleList.AddRange(_roleDataDict.Values);
+        return _cachedRoleList;
+    }
+
+    /// <summary>
+    /// 标记角色数据为脏数据
+    /// </summary>
+    /// <param name="roleID"></param>
+    public void MarkRoleStatsDirty(int roleID)
+    {
+        if (_roleDataDict.TryGetValue(roleID, out var data))
+        {
+            data.isDirty = true;
+        }
+    }
+    /// <summary>
+    /// 刷新指定角色数据
+    /// </summary>
+    /// <param name="roleID"></param>
+    public void RefreshRoleStats(int roleID)
+    {
+        var data = GetRoleData(roleID);
+        if (data == null || !data.isDirty)
+        {
+            return;
+        }
+        string weaponId = InventoryManager.INSTANCE.GetRoleWeaponId(roleID);
+        WeaponItem weapon = null;
+        if (!string.IsNullOrEmpty(weaponId))
+        {
+            weapon = InventoryManager.INSTANCE.GetItem(weaponId) as WeaponItem;
+        }
+        var (attack, defense, moveSpeed, maxHealth, maxArmor) = RoleStatsCalculator.CalculateFinalStats(data.baseData, weapon);
+        data.finalAttack = attack;
+        data.finalDefense = defense;
+        data.finalMoveSpeed = moveSpeed;
+        data.finalMaxHealth = maxHealth;
+        data.finalMaxArmor = maxArmor;
+        data.equippedWeaponId = weaponId;
+        data.isDirty = false;
+    }
+
+
+    public Sprite GetAvatar(int characterID)
+    {
+        if (_avatarCache.TryGetValue(characterID, out Sprite cached))
+        {
+            return cached;
+        }
+        var role = GetRoleData(characterID);
+        if (role == null || string.IsNullOrEmpty(role.baseData.avatarPath))
+        {
+            return null;
+        }
+        Sprite loaded = Resources.Load<Sprite>(role.baseData.avatarPath);
+        if (loaded != null)
+        {
+            _avatarCache[characterID] = loaded;
+        }
+        return loaded;
     }
     #endregion
 }
