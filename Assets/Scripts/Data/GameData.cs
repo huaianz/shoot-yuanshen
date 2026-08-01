@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using UnityEngine.InputSystem;
 
 
 /// <summary>
@@ -134,6 +135,38 @@ public class RoleRuntimeData
     }
 }
 
+/// <summary>
+/// 单个对话选项
+/// </summary>
+[System.Serializable]
+public class DialogueOption
+{
+    [Header("选项显示")]
+    public string optionText;
+    [Header("选项行为")]
+    public int nextDialogueID;
+    public DialogueAction action;//选择后执行的动作
+}
 
+/// <summary>
+/// 选择选项后触发的对话动作
+/// </summary>
+[System.Serializable]
+public class DialogueAction
+{
+    public ActionType type;
+    public int itemID;
+    public int amount = 1;
+    public string eventName;
+}
+
+public class ShopItem
+{
+    public int itemID;
+    public int price;
+    public int stock = -1;//-1表示无限
+    public int purchaseLimit = 0;//购买限制
+    public string currentcyType = "Coin";
+}
 
 

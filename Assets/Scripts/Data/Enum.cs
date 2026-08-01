@@ -48,3 +48,21 @@ public enum ItemType
     Weapon,
     Food
 }
+
+
+public enum ActionType
+{
+    None,
+    GiveItem,
+    RemoveItem,
+    OpenShop,
+    TriggerEvent,//触发自定义事件
+    CompleteQuest//完成任务
+}
+
+public enum NPCType
+{
+    Dialogue,
+    Shop,
+    Quest
+}
