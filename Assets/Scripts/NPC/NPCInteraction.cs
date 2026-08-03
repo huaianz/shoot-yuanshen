@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 
 public class NPCInteraction : MonoBehaviour
@@ -24,7 +23,7 @@ public class NPCInteraction : MonoBehaviour
 
     private void Awake()
     {
-        if (npcAnimator != null)
+        if (npcAnimator == null)
         {
             npcAnimator = GetComponentInChildren<Animator>();
         }

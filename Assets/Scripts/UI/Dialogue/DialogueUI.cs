@@ -11,8 +11,8 @@ public class DialogueUI : SingleMonoBase<DialogueUI>
 {
     [Header("UI组件")]
     public GameObject dialoguePanel;
-    public Image speakerAvatar;
     public TextMeshProUGUI speakerNameText;
+    public TextMeshProUGUI speakerPos;
     public TextMeshProUGUI dialogueText;
     public Transform optionContainer;
     public GameObject optionPrefab;
@@ -24,6 +24,7 @@ public class DialogueUI : SingleMonoBase<DialogueUI>
 
     protected override void Awake()
     {
+        base.Awake();
         //默认隐藏对话面板
         dialoguePanel.SetActive(false);
     }
@@ -42,13 +43,13 @@ public class DialogueUI : SingleMonoBase<DialogueUI>
         dialoguePanel.SetActive(true);
 
         //更新UI信息
-        if (speakerAvatar != null)
-        {
-            speakerAvatar.sprite = dialogue.speakerAvatar;
-        }
         if (speakerNameText != null)
         {
             speakerNameText.text = dialogue.speakerName;
+        }
+        if (speakerPos != null)
+        {
+            speakerPos.text = dialogue.speakerPos;
         }
         if (dialogueText != null)
         {

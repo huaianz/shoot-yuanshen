@@ -23,6 +23,7 @@ public class ShopManager : SingleMonoBase<ShopManager>
 
     protected override void OnDestroy()
     {
+        base.OnDestroy();
         EventHandler.OpenShopEvent -= OpenShop;
     }
 

@@ -10,7 +10,7 @@ public class DialogueData_SO : ScriptableObject
     [Header("对话基础数据")]
     public int dialogueID;
     public string speakerName;
-    public Sprite speakerAvatar;
+    public string speakerPos;          // 人物职位
     [Header("对话内容")]
     [TextArea(3, 6)]
     public string dialogueText;

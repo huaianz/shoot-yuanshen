@@ -160,6 +160,7 @@ public class DialogueAction
     public string eventName;
 }
 
+[System.Serializable]
 public class ShopItem
 {
     public int itemID;

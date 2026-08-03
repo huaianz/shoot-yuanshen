@@ -9,13 +9,14 @@ public class ShopItemUI : MonoBehaviour
     public Image itemIcon;
     public TextMeshProUGUI itemNameText;
     public TextMeshProUGUI priceText;
-    public TextMeshProUGUI stockText;
-    public Button buyBtn;
+    public TextMeshProUGUI stockText;//库存数
     private ShopItem _shopItem;
+    private ShopUI _parentUI;
 
-    public void Init(ShopItem shopItem)
+    public void Init(ShopItem shopItem, ShopUI parent)
     {
         _shopItem = shopItem;
+        _parentUI = parent;
 
         var weapon = InventoryManager.INSTANCE.weaponData?.GetWeaponByID(shopItem.itemID);
         if (weapon != null)
@@ -36,18 +37,19 @@ public class ShopItemUI : MonoBehaviour
         priceText.text = $"{shopItem.price} 💰";
         UpdateStockDisplay();
 
-        buyBtn.onClick.AddListener(() =>
+        //点击格子，选中商品
+        var btn = GetComponent<Button>();
+        if (btn != null)
         {
-            bool success = ShopManager.INSTANCE.BuyItem(_shopItem);
-            if (success)
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() =>
             {
-                UpdateStockDisplay();
-                ShopUI.INSTANCE?.RefreshCurrency();
-            }
-        });
+                _parentUI.SelectShopItem(_shopItem, this);
+            });
+        }
     }
 
-    private void UpdateStockDisplay()
+    public void UpdateStockDisplay()
     {
         if (_shopItem.stock == -1)
         {
@@ -56,15 +58,13 @@ public class ShopItemUI : MonoBehaviour
         }
         else if (_shopItem.stock <= 0)
         {
-            stockText.text = "已售罄";
+            stockText.text = "已售完";
             stockText.color = Color.red;
-            buyBtn.interactable = false;
         }
         else
         {
             stockText.text = $"库存: {_shopItem.stock}";
             stockText.color = Color.white;
-            buyBtn.interactable = true;
         }
     }
 }
