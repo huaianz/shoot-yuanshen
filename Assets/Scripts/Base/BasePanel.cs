@@ -38,6 +38,6 @@ public class BaseUIPanel : MonoBehaviour
     {
         isRemove = true;
         SetActive(false);
-        Destroy(gameObject);
+        //Destroy(gameObject);
     }
 }

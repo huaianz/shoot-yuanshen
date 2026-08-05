@@ -68,6 +68,23 @@ public class PlayerController : SingleMonoBase<PlayerController>
     // Update is called once per frame
     void Update()
     {
+        #region UI打开时锁定玩家
+        if (UIManager.IsAnyUIOpen)
+        {
+            //输入清零
+            moveIput = Vector2.zero;
+            isSprint = false;
+            isAiming = false;
+            isJumping = false;
+            isFire = false;
+            //方向向量清零
+            worldMovement = Vector3.zero;
+            localMovement = Vector3.zero;
+
+            return;
+        }
+        #endregion
+
         #region 更新玩家输入
         moveIput = input.Player.Move.ReadValue<Vector2>().normalized;
         isSprint = input.Player.IsSprint.IsPressed();

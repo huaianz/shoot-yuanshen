@@ -34,6 +34,19 @@ public class ShopUI : SingleMonoBase<ShopUI>
     private ShopItem _selectedShopItem;
     private ShopItemUI _selectedItemUI;
 
+    [Tooltip("弹窗物体")]
+    public GameObject messageBox;
+    [Tooltip("弹窗上移距离")]
+    public float floatUpDistance = 80f;
+    [Tooltip("上移+淡出持续时间")]
+    public float floatDuration = 1.2f;
+    [Tooltip("显示后原地停留时间")]
+    public float stayDuration = 0.6f;
+    private RectTransform _messageRect;
+    private CanvasGroup _messageCanvasGroup;
+    private Vector2 _messageStartPos;
+    private Coroutine _messageCoroutine;
+
     protected override void Awake()
     {
         base.Awake();
@@ -51,6 +64,18 @@ public class ShopUI : SingleMonoBase<ShopUI>
 
         EventHandler.CurrencyUpdateEvent += OnCurrencyUpdate;
         EventHandler.PurchaseSuccessEvent += OnPurchaseSuccess;
+
+        //弹幕初始化
+        if (messageBox != null)
+        {
+            _messageRect = messageBox.GetComponent<RectTransform>();
+            _messageCanvasGroup = messageBox.GetComponent<CanvasGroup>();
+            if (_messageCanvasGroup == null)
+            {
+                _messageCanvasGroup = messageBox.AddComponent<CanvasGroup>();
+            }
+            _messageStartPos = _messageRect.anchoredPosition;
+        }
     }
 
     protected override void OnDestroy()
@@ -72,10 +97,19 @@ public class ShopUI : SingleMonoBase<ShopUI>
         {
             return;
         }
+
+        //商店已经开着，就不重复执行
+        if (shopPanel.activeSelf)
+        {
+            return;
+        }
+
         shopPanel.SetActive(true);
+        UIManager.EnterUIBlock();
+
         shopNameText.text = shopData.shopName;
         RefreshCurrency();
-        ShowMessage("");
+        HideMessage();
         if (holdCountText != null) holdCountText.text = "";
 
         //隐藏详情
@@ -126,6 +160,7 @@ public class ShopUI : SingleMonoBase<ShopUI>
         foreach (var ui in _activeItems)
         {
             //重置格子状态
+            ui.SetSelected(false);
             ui.gameObject.SetActive(false);
             ui.transform.SetParent(null);
 
@@ -138,8 +173,20 @@ public class ShopUI : SingleMonoBase<ShopUI>
 
     public void SelectShopItem(ShopItem shopItem, ShopItemUI itemUI)
     {
+        //先把之前选中的格子回复原状
+        if (_selectedItemUI != null && _selectedItemUI != itemUI)
+        {
+            _selectedItemUI.SetSelected(false);
+        }
+
         _selectedShopItem = shopItem;
         _selectedItemUI = itemUI;
+
+        //让当前选中的格子放大变白
+        if (itemUI != null)
+        {
+            itemUI.SetSelected(true);
+        }
 
         if (detailPanel == null)
         {
@@ -256,10 +303,17 @@ public class ShopUI : SingleMonoBase<ShopUI>
 
     public void CloseShop()
     {
+        if (!shopPanel.activeSelf)
+        {
+            return;
+        }
+
         shopPanel.SetActive(false);
         ClearActiveItems();
         detailPanel.SetActive(false);
         EventHandler.CallShopClosedEvent();
+        HideMessage();
+        UIManager.ExitUIBlock();
     }
 
     private void OnCurrencyUpdate(string currencyType, int amount)
@@ -285,7 +339,81 @@ public class ShopUI : SingleMonoBase<ShopUI>
 
     public void ShowMessage(string msg)
     {
-        messageText.text = msg;
+        if (string.IsNullOrEmpty(msg))
+        {
+            HideMessage();
+            return;
+        }
+
+        //写入文本
+        if (messageText != null)
+        {
+            messageText.text = msg;
+        }
+
+        // 重置弹窗:回到起始位置、恢复不透明、显示
+        if (messageBox != null)
+        {
+            _messageRect.anchoredPosition = _messageStartPos;
+            _messageCanvasGroup.alpha = 1f;
+            messageBox.SetActive(true);
+        }
+
+
+        // 重新开始动画(连续消息以最后一条为准)
+        if (_messageCoroutine != null)
+        {
+            StopCoroutine(_messageCoroutine);
+        }
+        _messageCoroutine = StartCoroutine(MessageAnimation());
+    }
+
+    /// <summary>
+    /// 弹窗动画先停留,再上移淡出,最后隐藏
+    /// </summary>
+    private IEnumerator MessageAnimation()
+    {
+        //先原地停留一小会儿
+        yield return new WaitForSeconds(stayDuration);
+
+        //一边上移一边淡出
+        float t = 0f;
+        Vector2 from = _messageStartPos;
+        Vector2 to = from + Vector2.up * floatUpDistance;
+
+        while (t < floatDuration)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / floatDuration);
+
+            float eased = 1f - Mathf.Pow(1f - p, 2f);
+
+            _messageRect.anchoredPosition = Vector2.Lerp(from, to, eased);
+            _messageCanvasGroup.alpha = 1f - p;
+            yield return null;
+        }
+
+        //动画结束,隐藏并复位
+        HideMessage();
+    }
+
+    /// <summary>
+    /// 立即隐藏并复位弹窗(打开/关闭商店时调用)
+    /// </summary>
+    private void HideMessage()
+    {
+        if (_messageCoroutine != null)
+        {
+            StopCoroutine(_messageCoroutine);
+            _messageCoroutine = null;
+        }
+
+        if (messageBox != null)
+        {
+            messageBox.SetActive(false);
+            _messageRect.anchoredPosition = _messageStartPos;
+            _messageCanvasGroup.alpha = 1f;
+        }
     }
 
     /// <summary>

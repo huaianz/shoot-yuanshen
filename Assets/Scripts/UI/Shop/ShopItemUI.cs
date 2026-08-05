@@ -13,8 +13,27 @@ public class ShopItemUI : MonoBehaviour
     private ShopItem _shopItem;
     private ShopUI _parentUI;
 
+    [Tooltip("选中时放大倍率")]
+    public float selectedScale = 1.06f;
+    private Image _backgroundImage;   // 格子根节点的背景 Image
+    private Vector3 _originalScale;   // 原始大小
+    private Color _originalColor;     // 原始背景颜色
+
+    private void Awake()
+    {
+        // 缓存根节点上的背景 Image 和初始大小/颜色
+        _backgroundImage = GetComponent<Image>();
+        _originalScale = transform.localScale;
+        if (_backgroundImage != null)
+        {
+            _originalColor = _backgroundImage.color;
+        }
+    }
     public void Init(ShopItem shopItem, ShopUI parent)
     {
+        //复用前先回复原状
+        SetSelected(false);
+
         _shopItem = shopItem;
         _parentUI = parent;
 
@@ -34,7 +53,7 @@ public class ShopItemUI : MonoBehaviour
             }
         }
 
-        priceText.text = $"{shopItem.price} 💰";
+        priceText.text = $"{shopItem.price} ";
         UpdateStockDisplay();
 
         //点击格子，选中商品
@@ -65,6 +84,19 @@ public class ShopItemUI : MonoBehaviour
         {
             stockText.text = $"库存: {_shopItem.stock}";
             stockText.color = Color.white;
+        }
+    }
+
+    /// <summary>
+    /// 设置选中状态
+    /// </summary>
+    public void SetSelected(bool selected)
+    {
+        transform.localScale = selected ? Vector3.one * selectedScale : _originalScale;
+
+        if (_backgroundImage != null)
+        {
+            _backgroundImage.color = selected ? Color.white : _originalColor;
         }
     }
 }

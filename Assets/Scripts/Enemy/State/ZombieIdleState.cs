@@ -14,7 +14,11 @@ public class ZombieIdleState : EnemyStateBase
     public override void Update()
     {
         base.Update();
-        if (!enemyModel.IsAttackTargetInAttackRange())
+        if (enemyModel.IsAttackTargetInAttackRange())
+        {
+            enemyModel.SwitchState(EnemyState.Attack);
+        }
+        else
         {
             enemyModel.SwitchState(EnemyState.Move);
         }

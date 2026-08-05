@@ -105,7 +105,7 @@ public class PackagePanel : BaseUIPanel
     {
         RefreshUI();
         //TODO:暂时调用打开背包鼠标显示
-        UIManager.INSTANCE.OpenPanel(this);
+        UIManager.EnterUIBlock();
     }
 
     /// <summary>
@@ -581,7 +581,7 @@ public class PackagePanel : BaseUIPanel
     private void OnClickClose()
     {
         ClosePanel();
-        UIManager.INSTANCE.ClosePanel(this);
+        UIManager.ExitUIBlock();
         //打开主页面
         // UIManager,INSTANCE.OpenPanel(UIConst.MainPANEL);
     }
@@ -637,4 +637,10 @@ public class PackagePanel : BaseUIPanel
         UpdateCapacityDisplay();
     }
     #endregion
+
+    public void OpenPanel()
+    {
+        gameObject.SetActive(true);
+        RefreshUI();
+    }
 }

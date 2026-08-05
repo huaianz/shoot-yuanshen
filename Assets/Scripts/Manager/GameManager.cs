@@ -354,4 +354,23 @@ public class GameManager : SingleMonoBase<GameManager>
         return loaded;
     }
     #endregion
+    /// <summary>
+    /// 对当前上阵角色造成伤害
+    /// </summary>
+    /// <param name="damage"></param>
+    public void ApplyDamageToActiveRole(float damage)
+    {
+        if (_currentActiveRoleID < 0)
+        {
+            return;
+        }
+        var data = GetRoleData(_currentActiveRoleID);
+        if (data == null || data.currentHealth <= 0)
+        {
+            return;
+        }
+        data.currentHealth = Mathf.Max(0f, data.currentHealth - damage);
+
+        EventHandler.CallPlayerHealthChangedEvent(data.roleID, data.currentHealth, data.finalMaxHealth);
+    }
 }

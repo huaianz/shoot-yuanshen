@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
 /// 玩家子弹
@@ -14,65 +15,100 @@ public class PlayerWeaponBullet : MonoBehaviour
     [Tooltip("推力")]
     public float flyPower = 30f;
     [Tooltip("子弹存活时间")]
-    public float lifeTime = 10f;
+    public float lifeTime = 7f;
 
-    private Vector3 prevposition;
+    [Tooltip("射线检测图层")]
+    public LayerMask hitLayer = ~0;
+
+    [HideInInspector]
+    public BulletPool pool;
+
+    private Vector3 _prevPosition;
+
+    //复用缓冲
+    private static readonly Collider[] _overlapBuffer = new Collider[8];
+    private float _aliveTime;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
     }
-    private void Start()
-    {
-        rb.velocity = transform.forward * flyPower;//给子弹一个推力
-        Destroy(gameObject, lifeTime);
 
-        prevposition = transform.position;
-        CheckInitalOverlap();
+    private void OnEnable()
+    {
+        _aliveTime = 0f;
+    }
+
+    private void OnDisable()
+    {
+        //回池时清零
+        if (rb != null)
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+    }
+
+    /// <summary>
+    /// 发射(由 BulletPool 调用)
+    /// </summary>
+    public void Launch(Vector3 direction)
+    {
+        rb.velocity = direction * flyPower;
+        _prevPosition = transform.position;
+        _aliveTime = 0f;
+        CheckInitialOverlap();
     }
 
     private void Update()
     {
+        _aliveTime += Time.deltaTime;
+        if (_aliveTime >= lifeTime)
+        {
+            pool?.ReturnBullet(this);
+            return;
+        }
+
         CheckCollision();
-        prevposition = transform.position;
+        _prevPosition = transform.position;
     }
 
     /// <summary>
-    /// 检查子弹是否生成在敌人的碰撞体内部
+    /// 生成时检查是否直接出现在敌人碰撞体内部
     /// </summary>
-    void CheckInitalOverlap()
+    private void CheckInitialOverlap()
     {
-        Collider[] hitColliders = Physics.OverlapSphere(transform.position, 0.1f);
-        foreach (var hitCollider in hitColliders)
+        int count = Physics.OverlapSphereNonAlloc(transform.position, 0.1f, _overlapBuffer, hitLayer);
+        for (int i = 0; i < count; i++)
         {
-            EnemyBase enemy = hitCollider.GetComponent<EnemyBase>();
+            EnemyBase enemy = _overlapBuffer[i].GetComponent<EnemyBase>();
             if (enemy != null)
             {
                 enemy.Hurt(this, 1);
-                Destroy(gameObject);
+                pool?.ReturnBullet(this);
                 return;
             }
         }
     }
 
-    void CheckCollision()
+    /// <summary>
+    /// 逐帧射线检测,防止子弹穿模;无论打到敌人还是障碍物都回池
+    /// </summary>
+    private void CheckCollision()
     {
-        RaycastHit hit;
-        Vector3 dir = transform.position - prevposition;// 子弹方向
-        float distance = Vector3.Distance(transform.position, prevposition);// 两帧之间的子弹飞行距离
+        Vector3 dir = transform.position - _prevPosition;
+        float distance = dir.magnitude;
 
-        //绘制线段检测碰撞
-        if (Physics.Raycast(prevposition, dir.normalized, out hit, distance))
+        if (Physics.Raycast(_prevPosition, dir.normalized, out RaycastHit hit, distance, hitLayer))
         {
-            //检测是否为敌人
             if (hit.collider.CompareTag("Enemy"))
             {
                 EnemyBase enemy = hit.collider.GetComponent<EnemyBase>();
-                enemy.Hurt(this, 1);
+                enemy?.Hurt(this, 1);
             }
+            //命中即回收,不再穿墙继续飞
+            pool?.ReturnBullet(this);
         }
-
     }
-
 
 }

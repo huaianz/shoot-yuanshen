@@ -15,6 +15,7 @@ public class DialogueManager : SingleMonoBase<DialogueManager>
 
     protected override void Awake()
     {
+        base.Awake();
         BuildDictionary();
     }
 
@@ -28,7 +29,7 @@ public class DialogueManager : SingleMonoBase<DialogueManager>
         {
             if (dialogue == null)
             {
-                return;
+                continue;
             }
             if (!_dialogueDict.ContainsKey(dialogue.dialogueID))
             {
@@ -47,6 +48,7 @@ public class DialogueManager : SingleMonoBase<DialogueManager>
     /// <param name="dialogueID"></param>
     public void StartDialogue(int dialogueID)
     {
+        //以及在对话中，直接返回
         if (_isInDialogue)
         {
             return;
@@ -58,6 +60,9 @@ public class DialogueManager : SingleMonoBase<DialogueManager>
 
         _currentDialogue = dialogue;
         _isInDialogue = true;
+
+        //进入UI模式
+        UIManager.EnterUIBlock();
 
         //发送对话开始事件
         EventHandler.CallDialogueStartEvent(dialogueID);
@@ -179,11 +184,19 @@ public class DialogueManager : SingleMonoBase<DialogueManager>
 
     public void EndDialogue()
     {
+        //不在对话中，就直接退出
+        if (!_isInDialogue)
+        {
+            return;
+        }
+
         _isInDialogue = false;
         _currentDialogue = null;
         //隐藏对话UI
         DialogueUI.INSTANCE?.HideDialogue();
         //发送对话结束事件（npc切换到待机动画）
         EventHandler.CallDialogueEndEvent();
+
+        UIManager.ExitUIBlock();
     }
 }

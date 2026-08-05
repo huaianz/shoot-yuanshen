@@ -80,4 +80,27 @@ public static class EventHandler
         ShopClosedEvent?.Invoke();
     }
     #endregion
+
+    #region 玩家血量事件
+    /// <summary>
+    /// 玩家血量变化事件
+    /// </summary>
+    public static event Action<int, float, float> PlayerHealthChangedEvent;
+    public static void CallPlayerHealthChangedEvent(int roleID, float currentHealth, float maxHealth)
+    {
+        PlayerHealthChangedEvent?.Invoke(roleID, currentHealth, maxHealth);
+    }
+    #endregion
+
+
+    #region UI状态事件
+    /// <summary>
+    /// UI打开状态变化事件
+    /// </summary>
+    public static event Action<bool> UIStateChangedEvent;
+    public static void CallUIStateChangedEvent(bool isUIOpen)
+    {
+        UIStateChangedEvent?.Invoke(isUIOpen);
+    }
+    #endregion
 }

@@ -85,7 +85,7 @@ public class CharacterPanelUI : BaseUIPanel
         ClosePanelBtn.onClick.AddListener(() =>
         {
             characterPanel.SetActive(false);
-            UIManager.INSTANCE?.ClosePanel(this);
+            UIManager.ExitUIBlock();
         });
 
         //角色属性面板
@@ -137,6 +137,11 @@ public class CharacterPanelUI : BaseUIPanel
         int activeID = GameManager.INSTANCE.GetActiveRoleID();
         if (activeID >= 0 && videoUI != null)
         {
+            // 先激活视频背景,否则协程无法启动
+            if (!videoUI.gameObject.activeSelf)
+            {
+                videoUI.gameObject.SetActive(true);
+            }
             videoUI.PlayVideo(activeID);
         }
     }
@@ -263,11 +268,23 @@ public class CharacterPanelUI : BaseUIPanel
     public void OpenPanel()
     {
         characterPanel.SetActive(true);
+
+        UIManager.EnterUIBlock();
         //刷新数据
         _currentActiveRoleID = GameManager.INSTANCE.GetActiveRoleID();
         _selectedRoleID = _currentActiveRoleID;
         RefreshAllPanels();
         HighlightSelectedRole();
+
+        // 每次打开都播放当前角色的视频
+        if (videoUI != null)
+        {
+            if (!videoUI.gameObject.activeSelf)
+            {
+                videoUI.gameObject.SetActive(true);
+            }
+            videoUI.PlayVideo(GameManager.INSTANCE.GetActiveRoleID());
+        }
     }
 
     private void ClosedPanel()
@@ -278,7 +295,7 @@ public class CharacterPanelUI : BaseUIPanel
         {
             videoUI.StopVideo();
         }
-        UIManager.INSTANCE?.ClosePanel(this);
+        UIManager.ExitUIBlock();
 
     }
 

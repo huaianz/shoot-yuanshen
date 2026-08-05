@@ -51,7 +51,7 @@ public class PlayerAimingState : PlayerStateBase
             #endregion
 
             #region 开火监听
-            if (playerController.isFire)
+            if (playerController.isFire && !UIManager.IsAnyUIOpen)
             {
                 playerModel.weapon.Fire(playerController.AimTarget.position);
                 playerController.ShakeCamera();

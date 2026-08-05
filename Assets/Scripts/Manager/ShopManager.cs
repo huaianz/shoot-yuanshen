@@ -7,7 +7,7 @@ public class ShopManager : SingleMonoBase<ShopManager>
     [Header("商店数据")]
     public List<ShopData_SO> allShops;
     //字典缓存
-    private Dictionary<int, ShopData_SO> _shopDict;
+    private Dictionary<int, ShopData_SO> _shopDict = new Dictionary<int, ShopData_SO>();
     //货币缓存（货币类型/数量）
     private Dictionary<string, int> _playerCurrency = new Dictionary<string, int>();
     private Dictionary<int, int> _purchaseHistory = new Dictionary<int, int>();
@@ -32,6 +32,8 @@ public class ShopManager : SingleMonoBase<ShopManager>
     /// </summary>
     private void BuildDictionary()
     {
+        if (_shopDict == null)
+            _shopDict = new Dictionary<int, ShopData_SO>();
         _shopDict.Clear();
         foreach (var shop in allShops)
         {

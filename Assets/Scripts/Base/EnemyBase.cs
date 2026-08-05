@@ -62,6 +62,11 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     public float healthBarShowTime = 4f;
     private float healthBarShow_timer;
     #endregion
+
+    #region 攻击力
+    [Tooltip("攻击力")]
+    public int attackDamage = 10;
+    #endregion
     protected virtual void Awake()
     {
         stateMachine = new StateMachine(this);

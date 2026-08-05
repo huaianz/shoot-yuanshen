@@ -19,15 +19,15 @@ public class UIManager : SingleMonoBase<UIManager>
     [Header("背包界面")]
     public GameObject PackagePanel;
 
-    //记录当前打开的面板的列表
-    private List<BaseUIPanel> openedPanels = new List<BaseUIPanel>();
-    private HashSet<Type> panelsRequireMouse = new HashSet<Type>
+    //判断锁定角色，显示鼠标
+    public static bool IsAnyUIOpen
     {
-        typeof(PackagePanel),
-        //TODO:角色界面未实现鼠标显示
-        //typeof(CharacterPanel)  // 如果还没有这个类，先注释掉
-    };
+        get;
+        private set;
+    }
 
+    //当前打开的界面数量
+    private static int _uiBlockCount = 0;
 
     #region 界面的打开与关闭
     /// <summary>
@@ -90,28 +90,39 @@ public class UIManager : SingleMonoBase<UIManager>
     }
     #endregion
 
-    #region 鼠标显示
-    public void OpenPanel<T>(T panel) where T : BaseUIPanel
+    /// <summary>
+    /// 进入UI模式
+    /// </summary>
+    public static void EnterUIBlock()
     {
-        //实例化并打开面板
-        openedPanels.Add(panel);
-        UpdateMouseVisibility();
+        _uiBlockCount++;
+        //刷新鼠标状态
+        RefreshUIState();
     }
-    // 关闭面板时
-    public void ClosePanel(BaseUIPanel panel)
-    {
-        openedPanels.Remove(panel);
-        UpdateMouseVisibility();
-    }
-    // 更新鼠标可见性
-    private void UpdateMouseVisibility()
-    {
-        // 检查当前是否有任意一个“需要鼠标”的面板处于打开状态
-        bool shouldShowMouse = openedPanels.Any(p => panelsRequireMouse.Contains(p.GetType()));
 
-        Cursor.visible = shouldShowMouse;
-        Cursor.lockState = shouldShowMouse ? CursorLockMode.None : CursorLockMode.Locked;
+    /// <summary>
+    /// 退出UI模式
+    /// </summary>
+    public static void ExitUIBlock()
+    {
+        _uiBlockCount--;
+        //刷新鼠标状态
+        RefreshUIState();
     }
-    #endregion
+
+    /// <summary>
+    /// 根据计数刷新鼠标
+    /// </summary>
+    private static void RefreshUIState()
+    {
+        bool show = _uiBlockCount > 0;
+        if (IsAnyUIOpen == show) return;
+
+        IsAnyUIOpen = show;
+        Cursor.visible = show;
+        Cursor.lockState = show ? CursorLockMode.None : CursorLockMode.Locked;
+
+        EventHandler.CallUIStateChangedEvent(show);
+    }
 
 }

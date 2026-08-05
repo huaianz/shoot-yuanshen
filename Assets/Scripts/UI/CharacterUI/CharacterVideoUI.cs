@@ -48,6 +48,12 @@ public class CharacterVideoUI : MonoBehaviour
     /// <param name="characterID"></param>
     public void PlayVideo(int characterID)
     {
+        // 物体未激活时无法启动协程,直接跳过并提示
+        if (!gameObject.activeInHierarchy)
+        {
+            Debug.LogWarning("[CharacterVideoUI] 物体未激活,无法播放视频", this);
+            return;
+        }
         var role = GameManager.INSTANCE.GetRoleData(characterID);
 
         if (role == null)
