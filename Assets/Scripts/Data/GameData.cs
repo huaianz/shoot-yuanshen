@@ -170,4 +170,18 @@ public class ShopItem
     public string currentcyType = "Coin";
 }
 
+/// <summary>
+/// 敌人属性数据
+/// </summary>
+[System.Serializable]
+public class EnemyStats
+{
+    [Header("生命与攻击")]
+    public int maxHealth = 100;
+    public int attackDamage = 10;
+    [Header("移动速度")]
+    public float patrolSpeed = 1.5f;//巡逻速度
+    public float chaseSpeed = 3f;//追击速度
+    public float attackSpeed = 2f;//攻击时的移动速度
+}
 

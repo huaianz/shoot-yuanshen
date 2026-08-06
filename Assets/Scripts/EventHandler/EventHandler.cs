@@ -103,4 +103,12 @@ public static class EventHandler
         UIStateChangedEvent?.Invoke(isUIOpen);
     }
     #endregion
+
+    #region 声音事件
+    public static event System.Action<Vector3, float> SoundEvent;
+    public static void CallSoundEvent(Vector3 position, float radius)
+    {
+        SoundEvent?.Invoke(position, radius);
+    }
+    #endregion
 }

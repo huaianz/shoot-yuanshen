@@ -67,6 +67,21 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     [Tooltip("攻击力")]
     public int attackDamage = 10;
     #endregion
+
+    #region 行为树支持(新敌人使用,旧僵尸不受影响)
+    [Header("行为树敌人属性")]
+    public EnemyStats stats = new EnemyStats();
+    [HideInInspector]
+    public EnemyPhase currentPhase = EnemyPhase.Patrol;
+    [HideInInspector]
+    public EnemyPerception perception;
+    protected BTNode behaviorTree;
+    protected Vector3 spawnPoint;
+    public bool IsDead => isDead;
+    public float HealthRatio => health > 0 ? currentHealth / health : 0f;
+    #endregion
+    private string _lastPlayedAnim = "";
+
     protected virtual void Awake()
     {
         stateMachine = new StateMachine(this);
@@ -79,6 +94,9 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         moveSpeedHash = Animator.StringToHash("MoveSpeed");
         currentHealth = health;
         healthBarShow_timer = healthBarShowTime;
+
+        perception = GetComponent<EnemyPerception>();
+        spawnPoint = transform.position;
     }
 
     protected virtual void Start()
@@ -86,27 +104,40 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         SwitchState(EnemyState.Idle);
         FindAttackTarget();
         #region 实例化血条框
-        healthBar = Instantiate(healthBarPrefab, healthBarPos.position, Quaternion.identity);
-        healthBar.transform.SetParent(UIManager.INSTANCE.WorldSpaceCanvas.transform);
+        if (healthBarPrefab != null)
+        {
+            healthBar = Instantiate(healthBarPrefab, healthBarPos.position, Quaternion.identity);
+            healthBar.transform.SetParent(UIManager.INSTANCE.WorldSpaceCanvas.transform);
+        }
         #endregion
     }
 
     protected virtual void Update()
     {
+        //行为树驱动
+        if (behaviorTree != null)
+        {
+            behaviorTree.Evaluate();
+        }
+
         if (isDead)
             return;
         #region 血条框显示
-        if (healthBarShow_timer < healthBarShowTime)
+        if (healthBar != null)
         {
-            healthBar.SetActive(true);
-            healthBar.transform.position = healthBarPos.position;
-            healthBarShow_timer += Time.deltaTime;
-        }
-        else
-        {
-            healthBar.SetActive(false);
+            if (healthBarShow_timer < healthBarShowTime)
+            {
+                healthBar.SetActive(true);
+                healthBar.transform.position = healthBarPos.position;
+                healthBarShow_timer += Time.deltaTime;
+            }
+            else
+            {
+                healthBar.SetActive(false);
+            }
         }
         #endregion
+
     }
     /// <summary>
     /// 寻找离自身最近的PlayerModel
@@ -252,6 +283,32 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     }
 
     /// <summary>
+    /// 只在动画切换时播放一次(避免每帧重复 CrossFade 导致卡动画/滑冰)
+    /// </summary>
+    public void PlayAnimationOnce(string animName, float transition = 0.25f)
+    {
+        if (_lastPlayedAnim == animName) return;
+        _lastPlayedAnim = animName;
+        PlayStateAnimation(animName, transition);
+    }
+
+    /// <summary>
+    /// 清除动画缓存:被攻击/攻击/死亡打断后,下一个动作要能重新播放自己的动画
+    /// </summary>
+    public void ResetAnimationOnceCache()
+    {
+        _lastPlayedAnim = "";
+    }
+
+    /// <summary>
+    /// 设置移动动画速度参数(和僵尸一致的 MoveSpeed)
+    /// </summary>
+    public void SetMoveSpeed(float speed)
+    {
+        animator.SetFloat(moveSpeedHash, speed);
+    }
+
+    /// <summary>
     /// 销毁敌人
     /// </summary>
     public void Clear()
@@ -259,4 +316,8 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         stateMachine.Stop();
         Destroy(gameObject);
     }
+
+    //便捷属性
+    public Vector3 SpawnPoint => spawnPoint;
+    public bool HasTarget => perception != null && perception.Target != null;
 }

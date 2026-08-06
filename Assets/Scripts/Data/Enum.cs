@@ -66,3 +66,25 @@ public enum NPCType
     Shop,
     Quest
 }
+
+/// <summary>
+/// 行为树节点执行结果
+/// </summary>
+public enum NodeState
+{
+    Success,
+    Failure,
+    Running
+}
+
+/// <summary>
+/// 敌人行为阶段
+/// </summary>
+public enum EnemyPhase
+{
+    Patrol,   // 巡逻/闲置
+    Alert,    // 警戒
+    Combat,   // 战斗
+    Hit,      // 受击硬直
+    Dead      // 死亡
+}

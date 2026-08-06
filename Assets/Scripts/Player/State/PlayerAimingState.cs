@@ -64,6 +64,14 @@ public class PlayerAimingState : PlayerStateBase
             playerModel.animtor.SetFloat(aimingXHash, aimingX);
             playerModel.animtor.SetFloat(aimingYHash, aimingY);
             #endregion
+
+            //让开枪产生声音
+            if (playerController.isFire && !UIManager.IsAnyUIOpen)
+            {
+                playerModel.weapon.Fire(playerController.AimTarget.position);
+                playerController.ShakeCamera();
+                EventHandler.CallSoundEvent(playerModel.transform.position, 20f);   // 新增:开枪声源,半径20米
+            }
         }
     }
 
