@@ -183,5 +183,6 @@ public class EnemyStats
     public float patrolSpeed = 1.5f;//巡逻速度
     public float chaseSpeed = 3f;//追击速度
     public float attackSpeed = 2f;//攻击时的移动速度
+    public float retreatSpeed = 3f;//后退速度
 }
 

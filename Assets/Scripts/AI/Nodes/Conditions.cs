@@ -101,3 +101,32 @@ public class LowHealthCondition : BTNode
     }
     public override NodeState Evaluate() => _enemy.HealthRatio <= _ratio ? NodeState.Success : NodeState.Failure;
 }
+
+/// <summary>
+/// 玩家距离条件 max/min传-1表示不限
+/// </summary>
+public class PlayerDistanceCondition : BTNode
+{
+    private readonly EnemyBase _enemy;
+    private readonly float _minDistance;
+    private readonly float _maxDistance;
+
+    public PlayerDistanceCondition(EnemyBase enemy, float minDistance = -1f, float maxDistance = -1f)
+    {
+        _enemy = enemy;
+        _minDistance = minDistance;
+        _maxDistance = maxDistance;
+        NodeName = "玩家距离?";
+    }
+
+    public override NodeState Evaluate()
+    {
+        var target = _enemy.perception != null ? _enemy.perception.Target : null;
+        if (target == null) return NodeState.Failure;
+
+        float dist = Vector3.Distance(_enemy.transform.position, target.transform.position);
+        if (_minDistance >= 0f && dist < _minDistance) return NodeState.Failure;
+        if (_maxDistance >= 0f && dist > _maxDistance) return NodeState.Failure;
+        return NodeState.Success;
+    }
+}

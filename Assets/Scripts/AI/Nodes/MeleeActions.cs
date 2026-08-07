@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 /// <summary>
 /// 等待指定秒数
@@ -39,15 +40,20 @@ public class PatrolAction : BTNode
 {
     private readonly EnemyBase _enemy;
     private readonly float _patrolRadius;
+    private readonly string _victoryAnim;
     private Vector3 _targetPoint;
     private float _idleEndTime;
+    private float _victoryEndTime;
     private bool _idling = true;
     private bool _idleStarted;
+    private bool _doingVictory;
 
-    public PatrolAction(EnemyBase enemy, float patrolRadius = 5f)
+    public PatrolAction(EnemyBase enemy, float patrolRadius = 5f, string victoryAnim = null)
     {
         _enemy = enemy;
         _patrolRadius = patrolRadius;
+        _victoryAnim = victoryAnim;
+        _targetPoint = _enemy.SpawnPoint;
         _idleEndTime = Time.time + Random.Range(3f, 5f);
         NodeName = "巡逻";
     }
@@ -57,27 +63,53 @@ public class PatrolAction : BTNode
         _enemy.currentPhase = EnemyPhase.Patrol;
         _enemy.navMeshAgent.speed = _enemy.stats.patrolSpeed;
 
-        if (_idling)
+        //胜利动作//播放完继续巡逻
+        if (_doingVictory)
         {
-            if (!_idleStarted)
+            if (Time.time >= _victoryEndTime)
             {
-                _idleStarted = true;
-                _enemy.navMeshAgent.ResetPath();
-            }
-            _enemy.PlayAnimationOnce("Idle");
-            _enemy.SetMoveSpeed(0f);
-
-            if (Time.time >= _idleEndTime)
-            {
+                _doingVictory = false;
                 _idling = false;
                 _idleStarted = false;
                 PickNewTarget();
             }
             return NodeState.Running;
         }
+        if (_idling)
+        {
+            if (!_idleStarted)
+            {
+                _idleStarted = true;
+                _enemy.navMeshAgent.isStopped = true;
+                _enemy.navMeshAgent.ResetPath();
+            }
+            _enemy.PlayAnimationOnce(_enemy.idleAnimName);
+            _enemy.SetMoveSpeed(0f);
 
-        _enemy.PlayAnimationOnce("Move");
+            if (Time.time >= _idleEndTime)
+            {
+                //有胜利动画时，30%概率播放胜利动画
+                if (!string.IsNullOrEmpty(_victoryAnim) && Random.value < 0.3f)
+                {
+                    _doingVictory = true;
+                    _victoryEndTime = Time.time + 2f;
+                    _enemy.ResetAnimationOnceCache();
+                    _enemy.animator.CrossFadeInFixedTime(_victoryAnim, 0.1f);
+                    _enemy.SetMoveSpeed(0f);
+                }
+                else
+                {
+                    _idling = false;
+                    _idleStarted = false;
+                    PickNewTarget();
+                }
+            }
+            return NodeState.Running;
+        }
+
+        _enemy.PlayAnimationOnce(_enemy.walkAnimName);
         _enemy.SetMoveSpeed(0.5f);
+        _enemy.navMeshAgent.isStopped = false;
 
         float dist = Vector3.Distance(_enemy.transform.position, _targetPoint);
         if (dist < 0.8f)
@@ -91,7 +123,18 @@ public class PatrolAction : BTNode
     private void PickNewTarget()
     {
         Vector2 circle = Random.insideUnitCircle * _patrolRadius;
-        _targetPoint = _enemy.SpawnPoint + new Vector3(circle.x, 0f, circle.y);
+        Vector3 candidate = _enemy.SpawnPoint + new Vector3(circle.x, 0f, circle.y);
+
+        // 只在 NavMesh 上找巡逻点,找不到就原地发呆
+        if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+        {
+            _targetPoint = hit.position;
+        }
+        else
+        {
+            _targetPoint = _enemy.SpawnPoint;
+        }
+
         _enemy.navMeshAgent.SetDestination(_targetPoint);
     }
 }
@@ -116,8 +159,9 @@ public class ChaseAction : BTNode
         if (target == null) return NodeState.Failure;
 
         _enemy.currentPhase = EnemyPhase.Combat;
+        _enemy.navMeshAgent.isStopped = false;
         _enemy.navMeshAgent.speed = _enemy.stats.chaseSpeed;
-        _enemy.PlayAnimationOnce("Move");
+        _enemy.PlayAnimationOnce(_enemy.walkAnimName);
         _enemy.SetMoveSpeed(1f);
 
         if (Time.time >= _nextSetTime)
@@ -148,16 +192,22 @@ public class ChaseAction : BTNode
 public class MeleeAttackAction : BTNode
 {
     private readonly EnemyBase _enemy;
+    private readonly string _animName;    // 新增:攻击动画名
     private readonly float _cooldown;
     private readonly float _animTime;
     private float _attackEndTime;
     private float _nextAttackTime;
+    private readonly float _attackRange;
 
-    public MeleeAttackAction(EnemyBase enemy, float cooldown = 1.5f, float animTime = 1f)
+    public MeleeAttackAction(EnemyBase enemy, string animName = "Attack",
+                             float cooldown = 1.5f, float animTime = 1f, float attackRange = -1f)
     {
         _enemy = enemy;
+        _animName = animName;
         _cooldown = cooldown;
         _animTime = animTime;
+        //没传范围就用默认(近战距离+0.5),传了就用传的
+        _attackRange = attackRange < 0f ? enemy.minAttackDistance + 0.5f : attackRange;
         NodeName = "近战攻击";
     }
 
@@ -168,28 +218,25 @@ public class MeleeAttackAction : BTNode
 
         _enemy.currentPhase = EnemyPhase.Combat;
 
-        // 冷却中，原地等待,面朝目标
         if (Time.time < _nextAttackTime)
         {
             ChaseAction.FaceTarget(_enemy, target.transform.position);
             return NodeState.Running;
         }
 
-        // 开始挥击
         if (_attackEndTime <= 0f)
         {
             _enemy.ResetAnimationOnceCache();
-            _enemy.animator.CrossFadeInFixedTime("Attack", 0.1f);
+            _enemy.animator.CrossFadeInFixedTime(_animName, 0.1f);   // 用 _animName 代替写死的 "Attack"
             _attackEndTime = Time.time + _animTime;
         }
 
-        // 挥完:目标还在范围内就造成伤害
         if (Time.time >= _attackEndTime)
         {
             float dist = Vector3.Distance(_enemy.transform.position, target.transform.position);
-            if (dist <= _enemy.minAttackDistance + 0.5f)
+            if (dist <= _attackRange)
             {
-                GameManager.INSTANCE?.ApplyDamageToActiveRole(_enemy.attackDamage);
+                GameManager.INSTANCE?.ApplyDamageToActiveRole(_enemy.stats.attackDamage);
             }
             _nextAttackTime = Time.time + _cooldown;
             _attackEndTime = 0f;
@@ -206,10 +253,16 @@ public class MeleeAttackAction : BTNode
 public class DeathAction : BTNode
 {
     private readonly EnemyBase _enemy;
+    private readonly string _animName;
     private float _endTime;
     private bool _started;
 
-    public DeathAction(EnemyBase enemy) { _enemy = enemy; NodeName = "死亡"; }
+    public DeathAction(EnemyBase enemy, string animName = "Dead")
+    {
+        _enemy = enemy;
+        _animName = animName;
+        NodeName = "死亡";
+    }
 
     public override NodeState Evaluate()
     {
@@ -294,7 +347,7 @@ public class FaceLastKnownAction : BTNode
             : _enemy.transform.position;
         ChaseAction.FaceTarget(_enemy, pos);
         _enemy.currentPhase = EnemyPhase.Alert;
-        _enemy.PlayAnimationOnce("Idle");
+        _enemy.PlayAnimationOnce(_enemy.idleAnimName);
         _enemy.SetMoveSpeed(0f);
         if (Time.time >= _endTime)
         {
@@ -347,6 +400,67 @@ public class HesitateAction : BTNode
             _nextHesitateTime = Time.time + _cooldown;
             return NodeState.Success;
         }
+        return NodeState.Running;
+    }
+}
+
+/// <summary>
+/// 后退,面朝玩家倒退拉开距离;被挡就侧向横跳;距离够了返回成功
+/// </summary>
+public class RetreatAction : BTNode
+{
+    private readonly EnemyBase _enemy;
+    private readonly float _stopDistance;
+    private float _nextSetTime;
+    private bool _strafeRight = true;
+
+    public RetreatAction(EnemyBase enemy, float stopDistance = 8f)
+    {
+        _enemy = enemy;
+        _stopDistance = stopDistance;
+        NodeName = "后退拉开距离";
+    }
+
+    public override NodeState Evaluate()
+    {
+        var target = _enemy.perception != null ? _enemy.perception.Target : null;
+        if (target == null) return NodeState.Failure;
+
+        _enemy.currentPhase = EnemyPhase.Combat;
+        _enemy.navMeshAgent.speed = _enemy.stats.retreatSpeed;
+        _enemy.navMeshAgent.isStopped = false;
+        _enemy.PlayAnimationOnce(_enemy.walkAnimName);
+        _enemy.SetMoveSpeed(0.8f);
+
+        float dist = Vector3.Distance(_enemy.transform.position, target.transform.position);
+        if (dist >= _stopDistance)
+        {
+            return NodeState.Success;   // 拉开到 8 米以上,交给远程攻击
+        }
+
+        // 后退方向 = 远离玩家
+        Vector3 away = (_enemy.transform.position - target.transform.position).normalized;
+        away.y = 0f;
+
+        if (Time.time >= _nextSetTime)
+        {
+            _nextSetTime = Time.time + 0.3f;   // 节流
+
+            // 后退被挡(身后 2 米内有东西)→ 侧向横跳
+            if (Physics.Raycast(_enemy.transform.position, away, out RaycastHit hit, 2f))
+            {
+                _strafeRight = !_strafeRight;
+                Vector3 side = _strafeRight
+                    ? Vector3.Cross(Vector3.up, away)
+                    : Vector3.Cross(away, Vector3.up);
+                side.y = 0f;
+                away = side.normalized;
+            }
+
+            _enemy.navMeshAgent.SetDestination(_enemy.transform.position + away * 3f);
+        }
+
+        ChaseAction.FaceTarget(_enemy, target.transform.position);
         return NodeState.Running;
     }
 }

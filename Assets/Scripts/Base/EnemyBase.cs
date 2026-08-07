@@ -81,17 +81,51 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     public float HealthRatio => health > 0 ? currentHealth / health : 0f;
     #endregion
     private string _lastPlayedAnim = "";
-
+    [Tooltip("移动动画名")]
+    public string walkAnimName = "Move";
+    private bool _hasMoveSpeedParam;   // 动画器是否有MoveSpeed参数
+    private bool _hasHitTrigger;   // 动画器是否有受击触发器参数
+    [Tooltip("待机动画名(默认 Idle;史莱姆用 IdleNormal)")]
+    public string idleAnimName = "Idle";
     protected virtual void Awake()
     {
         stateMachine = new StateMachine(this);
         animator = GetComponent<Animator>();
         navMeshAgent = GetComponent<NavMeshAgent>();
-        navMeshAgent.stoppingDistance = minAttackDistance;
-        navMeshAgent.angularSpeed = rotationSpeed;
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.stoppingDistance = minAttackDistance;
+            navMeshAgent.angularSpeed = rotationSpeed;
+        }
 
         hitHash = Animator.StringToHash("Hit");
+        _hasHitTrigger = false;
+        if (animator != null)
+        {
+            foreach (var p in animator.parameters)
+            {
+                if (p.nameHash == hitHash)
+                {
+                    _hasHitTrigger = true;
+                    break;
+                }
+            }
+        }
+
         moveSpeedHash = Animator.StringToHash("MoveSpeed");
+        // 检查动画器有没有MoveSpeed参数,有才设置(一次即可)
+        if (animator != null)
+        {
+            foreach (var p in animator.parameters)
+            {
+                if (p.nameHash == moveSpeedHash)
+                {
+                    _hasMoveSpeedParam = true;
+                    break;
+                }
+            }
+        }
+
         currentHealth = health;
         healthBarShow_timer = healthBarShowTime;
 
@@ -171,7 +205,8 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     /// </summary>
     protected virtual void SlowMoveAnimation()
     {
-        animator.SetFloat("MoveSpeed", slowMoveSpeed);
+        SetMoveSpeed(slowMoveSpeed);
+
         if (recoverSpeedCoroutine != null)
         {
             StopCoroutine(recoverSpeedCoroutine);
@@ -185,7 +220,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         //等待指定时间
         yield return new WaitForSeconds(delay);
         //恢复移动动画播放速度
-        animator.SetFloat("MoveSpeed", normalMoveSpeed);
+        SetMoveSpeed(normalMoveSpeed);
         recoverSpeedCoroutine = null;
     }
 
@@ -197,7 +232,11 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     public virtual void Hurt(PlayerWeaponBullet bullet, float damageMultiplier = 1)
     {
         #region 受击动画相关
-        animator.SetTrigger(hitHash);
+        if (_hasHitTrigger)
+        {
+            animator.SetTrigger(hitHash);
+        }
+
         SlowMoveAnimation();
         #endregion
         #region 生成喷血特效
@@ -223,8 +262,10 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         else
         {
             SwitchState(EnemyState.Dead);
-            navMeshAgent.enabled = false;
-            GetComponent<BoxCollider>().enabled = false;
+            if (navMeshAgent != null) navMeshAgent.enabled = false;
+            Collider col = GetComponent<Collider>();
+            if (col != null) col.enabled = false;
+
             currentHealth = 0;
             isDead = true;
             Destroy(healthBar);//销毁血条
@@ -305,7 +346,10 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     /// </summary>
     public void SetMoveSpeed(float speed)
     {
-        animator.SetFloat(moveSpeedHash, speed);
+        if (_hasMoveSpeedParam)
+        {
+            animator.SetFloat(moveSpeedHash, speed);
+        }
     }
 
     /// <summary>
@@ -315,6 +359,19 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     {
         stateMachine.Stop();
         Destroy(gameObject);
+    }
+
+    /// <summary>
+    /// 直接击杀(自爆等场景用):清空血量、停用导航和碰撞
+    /// </summary>
+    public void Kill()
+    {
+        if (isDead) return;
+        currentHealth = 0;
+        isDead = true;
+        if (navMeshAgent != null) navMeshAgent.enabled = false;
+        Collider col = GetComponent<Collider>();
+        if (col != null) col.enabled = false;
     }
 
     //便捷属性
