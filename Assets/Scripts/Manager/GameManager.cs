@@ -209,6 +209,7 @@ public class GameManager : SingleMonoBase<GameManager>
     {
         public const int PackageTypeWeapon = 1;
         public const int PackageTypeFood = 2;
+        public const int PackageTypeMaterial = 3;
     }
 
     #region 按类型获取数据
@@ -219,6 +220,10 @@ public class GameManager : SingleMonoBase<GameManager>
     public List<ItemBase> GetFoodItems()
     {
         return new List<ItemBase>(InventoryManager.INSTANCE.GetAllFoods());
+    }
+    public List<ItemBase> GetMaterialItems()
+    {
+        return new List<ItemBase>(InventoryManager.INSTANCE.GetAllMaterials());
     }
     #endregion
 

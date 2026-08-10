@@ -16,6 +16,8 @@ public class PackagePanel : BaseUIPanel
     private Image selectWeapon;
     private Button menuFoodBtn;
     private Image selectFood;
+    private Button menuMaterialBtn;
+    private Image selectMaterial;
     private TextMeshProUGUI tabNameText;
     private Button closeBtn;
     //总容量显示
@@ -39,6 +41,14 @@ public class PackagePanel : BaseUIPanel
     private TextMeshProUGUI foodDescText;
     private Transform foodStars;
     private Image foodIcon;
+    [Header("素材区")]
+    private Transform centerMaterial;
+    private ScrollRect scrollRectMaterial;
+    private RectTransform scrollContentMaterial;
+    //详细信息
+    private TextMeshProUGUI materialNameText;
+    private TextMeshProUGUI materialDescText;
+    private Image materialIcon;
     [Header("底部")]
     private Transform UIDeletePanel;
     private Button deleteBackBtn;
@@ -59,6 +69,10 @@ public class PackagePanel : BaseUIPanel
     #region 食物对象池
     private List<PackageCell> cellPoolFood = new List<PackageCell>();
     private List<PackageCell> activeCellsFood = new List<PackageCell>();
+    #endregion
+    #region 素材对象池
+    private List<PackageCell> cellPoolMaterial = new List<PackageCell>();
+    private List<PackageCell> activeCellsMaterial = new List<PackageCell>();
     #endregion
     #endregion
 
@@ -128,6 +142,13 @@ public class PackagePanel : BaseUIPanel
             var select = menuFoodTrans.Find("Select");
             selectFood = select.GetComponent<Image>();
         }
+        var menuMaterialTrans = transform.Find("TopCenter/Menus/Material");
+        if (menuMaterialTrans != null)
+        {
+            menuMaterialBtn = menuMaterialTrans.GetComponent<Button>();
+            var select = menuMaterialTrans.Find("Select");
+            selectMaterial = select.GetComponent<Image>();
+        }
         var tabNameTrans = transform.Find("LeftTop/TabName");
         if (tabNameTrans != null)
         {
@@ -184,6 +205,44 @@ public class PackagePanel : BaseUIPanel
             var description = Bottom.Find("description");
             foodDescText = description.GetComponent<TextMeshProUGUI>();
         }
+        //素材区
+        centerMaterial = transform.Find("Center-Material");
+        if (centerMaterial != null)
+        {
+            var scrollView = centerMaterial.Find("Scroll View");
+            if (scrollView != null)
+            {
+                scrollRectMaterial = scrollView.GetComponent<ScrollRect>();
+                scrollContentMaterial = scrollRectMaterial?.content;
+            }
+            var Center = centerMaterial.Find("DetailPanel-Material/Center");
+            if (Center != null)
+            {
+                var nameMat = Center.Find("name");
+                if (nameMat != null)
+                {
+                    materialNameText = nameMat.GetComponent<TextMeshProUGUI>();
+                }
+                var iconMat = Center.Find("icon");
+                if (iconMat != null)
+                {
+                    materialIcon = iconMat.GetComponent<Image>();
+                }
+            }
+            var Bottom = centerMaterial.Find("DetailPanel-Material/Bottom");
+            if (Bottom != null)
+            {
+                var description = Bottom.Find("description");
+                if (description == null)
+                {
+                    description = Bottom.Find("Description");
+                }
+                if (description != null)
+                {
+                    materialDescText = description.GetComponent<TextMeshProUGUI>();
+                }
+            }
+        }
         //底部
         UIDeletePanel = transform.Find("Bottom/DeletePanel");
         var deleteBackTrans = transform.Find("Bottom/DeletePanel/Back");
@@ -228,6 +287,10 @@ public class PackagePanel : BaseUIPanel
         if (menuFoodBtn != null)
         {
             menuFoodBtn.onClick.AddListener(() => OnClickTab(GameManager.GameConst.PackageTypeFood));
+        }
+        if (menuMaterialBtn != null)
+        {
+            menuMaterialBtn.onClick.AddListener(() => OnClickTab(GameManager.GameConst.PackageTypeMaterial));
         }
         if (closeBtn != null)
         {
@@ -280,25 +343,22 @@ public class PackagePanel : BaseUIPanel
     private void SwitchTab(int tabType)
     {
         bool isWeapon = (tabType == GameManager.GameConst.PackageTypeWeapon);
+        bool isFood = (tabType == GameManager.GameConst.PackageTypeFood);
+
         //显示和隐藏对应的Center
-        if (centerWeapon != null)
-        {
-            Debug.Log("武器界面不为空");
-            centerWeapon.gameObject.SetActive(isWeapon);
-        }
-        if (centerFood != null)
-        {
-            Debug.Log("食物界面不为空");
-            centerFood.gameObject.SetActive(!isWeapon);
-        }
+        if (centerWeapon != null) centerWeapon.gameObject.SetActive(isWeapon);
+        if (centerFood != null) centerFood.gameObject.SetActive(isFood);
+        if (centerMaterial != null) centerMaterial.gameObject.SetActive(!isWeapon && !isFood);
+
         //更新Tab名称
         if (tabNameText != null)
         {
-            tabNameText.text = isWeapon ? "武器" : "食物";
+            tabNameText.text = isWeapon ? "武器" : (isFood ? "食物" : "素材");
         }
         //更新Tab图标
-        selectWeapon.gameObject.SetActive(isWeapon);
-        selectFood.gameObject.SetActive(!isWeapon);
+        if (selectWeapon != null) selectWeapon.gameObject.SetActive(isWeapon);
+        if (selectFood != null) selectFood.gameObject.SetActive(isFood);
+        if (selectMaterial != null) selectMaterial.gameObject.SetActive(!isWeapon && !isFood);
     }
     #endregion
 
@@ -321,26 +381,32 @@ public class PackagePanel : BaseUIPanel
     private void RefreshScroll(int tabType)
     {
         bool isWeapon = (tabType == GameManager.GameConst.PackageTypeWeapon);
-        RectTransform content = isWeapon ? scrollContentWeapon : scrollContentFood;
+        bool isFood = (tabType == GameManager.GameConst.PackageTypeFood);
+
+        RectTransform content = isWeapon ? scrollContentWeapon : (isFood ? scrollContentFood : scrollContentMaterial);
         if (content == null || PackageUIItemPrefab == null)
         {
             return;
         }
+
         //获取对应类型数据
         List<ItemBase> dataList;
         if (isWeapon)
         {
-            //获取武器数据
             dataList = GameManager.INSTANCE.GetWeaponItems();
         }
-        else
+        else if (isFood)
         {
             dataList = GameManager.INSTANCE.GetFoodItems();
         }
+        else
+        {
+            dataList = GameManager.INSTANCE.GetMaterialItems();
+        }
 
         //选择对应的池子
-        List<PackageCell> pool = isWeapon ? cellPoolWeapon : cellPoolFood;
-        List<PackageCell> activeList = isWeapon ? activeCellsWeapon : activeCellsFood;
+        List<PackageCell> pool = isWeapon ? cellPoolWeapon : (isFood ? cellPoolFood : cellPoolMaterial);
+        List<PackageCell> activeList = isWeapon ? activeCellsWeapon : (isFood ? activeCellsFood : activeCellsMaterial);
 
         //确保池子里有足够的格子
         int needCount = dataList.Count;
@@ -365,7 +431,7 @@ public class PackagePanel : BaseUIPanel
         }
 
         //重置滚动位置
-        ScrollRect scrollRect = isWeapon ? scrollRectWeapon : scrollRectFood;
+        ScrollRect scrollRect = isWeapon ? scrollRectWeapon : (isFood ? scrollRectFood : scrollRectMaterial);
         if (scrollRect != null)
         {
             scrollRect.verticalNormalizedPosition = 1f;
@@ -389,49 +455,43 @@ public class PackagePanel : BaseUIPanel
             ClearDetailPanel();
             return;
         }
-        bool isWeapon = (_currentTabType == GameManager.GameConst.PackageTypeWeapon);
 
-        if (isWeapon)
+        if (_currentTabType == GameManager.GameConst.PackageTypeWeapon)
         {
             var weapon = InventoryManager.INSTANCE.weaponData?.GetWeaponByID(item.itemID);
             if (weapon == null)
             {
                 return;
             }
-            if (weaponNameText != null)
-            {
-                weaponNameText.text = weapon.weaponName;
-            }
-            if (weaponDescText != null)
-            {
-                weaponDescText.text = weapon.weaponDescription;
-            }
+            if (weaponNameText != null) weaponNameText.text = weapon.weaponName;
+            if (weaponDescText != null) weaponDescText.text = weapon.weaponDescription;
             Sprite icon = InventoryManager.INSTANCE.GetIcon(item.itemID);
-            if (weaponIcon != null)
-                weaponIcon.sprite = icon;
+            if (weaponIcon != null) weaponIcon.sprite = icon;
             RefreshDetailStars(weaponStars, weapon.Stars);
         }
-        else
+        else if (_currentTabType == GameManager.GameConst.PackageTypeFood)
         {
             var food = InventoryManager.INSTANCE.foodData?.GetFoodByID(item.itemID);
             if (food == null)
             {
                 return;
             }
-            if (foodNameText != null)
-            {
-                foodNameText.text = food.foodName;
-            }
-            if (foodDescText != null)
-            {
-                foodDescText.text = food.description;
-            }
+            if (foodNameText != null) foodNameText.text = food.foodName;
+            if (foodDescText != null) foodDescText.text = food.description;
             Sprite icon = InventoryManager.INSTANCE.GetIcon(item.itemID);
-            if (foodIcon != null)
+            if (foodIcon != null) foodIcon.sprite = icon;
+        }
+        else
+        {
+            var material = InventoryManager.INSTANCE.materialData?.GetMaterialByID(item.itemID);
+            if (material == null)
             {
-                foodIcon.sprite = icon;
+                return;
             }
-            //TODO:食物没有星星
+            if (materialNameText != null) materialNameText.text = material.materialName;
+            if (materialDescText != null) materialDescText.text = material.description;
+            Sprite icon = InventoryManager.INSTANCE.GetIcon(item.itemID);
+            if (materialIcon != null) materialIcon.sprite = icon;
         }
     }
 
@@ -495,6 +555,19 @@ public class PackagePanel : BaseUIPanel
                 star.gameObject.SetActive(false);
             }
         }
+
+        if (materialNameText != null)
+        {
+            materialNameText.text = "";
+        }
+        if (materialDescText != null)
+        {
+            materialDescText.text = "";
+        }
+        if (materialIcon != null)
+        {
+            materialIcon.sprite = null;
+        }
     }
 
     /// <summary>
@@ -503,7 +576,24 @@ public class PackagePanel : BaseUIPanel
     public void RefreshDeletePanel()
     {
         //只刷新当前激活的标签页
-        List<PackageCell> activeList = (_currentTabType == GameManager.GameConst.PackageTypeWeapon) ? activeCellsWeapon : activeCellsFood;
+        List<PackageCell> activeList;
+        int totalCount;
+        if (_currentTabType == GameManager.GameConst.PackageTypeWeapon)
+        {
+            activeList = activeCellsWeapon;
+            totalCount = InventoryManager.INSTANCE._weaponIds.Count;
+        }
+        else if (_currentTabType == GameManager.GameConst.PackageTypeFood)
+        {
+            activeList = activeCellsFood;
+            totalCount = InventoryManager.INSTANCE._foodIds.Count;
+        }
+        else
+        {
+            activeList = activeCellsMaterial;
+            totalCount = InventoryManager.INSTANCE._materialIds.Count;
+        }
+
         foreach (var cell in activeList)
         {
             if (cell != null)
@@ -512,12 +602,8 @@ public class PackagePanel : BaseUIPanel
             }
         }
         // 更新提示文本（动态总数）
-        int totalCount = (_currentTabType == GameManager.GameConst.PackageTypeWeapon)
-        ? InventoryManager.INSTANCE._weaponIds.Count
-        : InventoryManager.INSTANCE._foodIds.Count;
         if (deleteInfoText != null)
             deleteInfoText.text = $"已选择 {deleteChooseUid.Count}/{totalCount}";
-
     }
 
     /// <summary>
@@ -550,8 +636,7 @@ public class PackagePanel : BaseUIPanel
         if (capacityText == null) return;
 
         //获取当前标签页的物品总数
-        int currentCount = (InventoryManager.INSTANCE._weaponIds.Count + InventoryManager.INSTANCE._foodIds.Count);
-
+        int currentCount = (InventoryManager.INSTANCE._weaponIds.Count + InventoryManager.INSTANCE._foodIds.Count + InventoryManager.INSTANCE._materialIds.Count);
         //最大容量520
         const int maxCapacity = 520;
         capacityText.text = $"{currentCount}/{maxCapacity}";
@@ -564,9 +649,19 @@ public class PackagePanel : BaseUIPanel
     {
         if (string.IsNullOrEmpty(uid)) return null;
 
-        List<PackageCell> activeList = (_currentTabType == GameManager.GameConst.PackageTypeWeapon)
-            ? activeCellsWeapon
-            : activeCellsFood;
+        List<PackageCell> activeList;
+        if (_currentTabType == GameManager.GameConst.PackageTypeWeapon)
+        {
+            activeList = activeCellsWeapon;
+        }
+        else if (_currentTabType == GameManager.GameConst.PackageTypeFood)
+        {
+            activeList = activeCellsFood;
+        }
+        else
+        {
+            activeList = activeCellsMaterial;
+        }
 
         foreach (var cell in activeList)
         {

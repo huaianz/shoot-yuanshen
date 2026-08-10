@@ -1,0 +1,187 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// 地面掉落物：自动旋转+上下浮动，玩家靠近后自动拾取并提示
+/// </summary>
+public class PickupItem : MonoBehaviour
+{
+    [Header("掉落内容")]
+    public PickupType pickupType;
+    public int itemID;
+    public int amount = 1;
+
+    [Header("拾取参数")]
+    [Tooltip("拾取半径")]
+    public float pickupRadius = 2f;
+    [Tooltip("检测间隔")]
+    public float checkInterval = 0.15f;
+    [Tooltip("生成后多少秒内不可拾取(防止落地瞬间被抢)")]
+    public float spawnCooldown = 0.6f;
+
+    [Header("表现")]
+    [Tooltip("自转速度")]
+    public float rotateSpeed = 120f;
+    [Tooltip("上下浮动速度")]
+    public float bobSpeed = 1.5f;
+    [Tooltip("上下浮动高度")]
+    public float bobHeight = 0.15f;
+
+    // 运行时状态
+    private float _spawnTimer;
+    private float _checkTimer;
+    private Vector3 _basePos;
+    private float _bobPhase;
+    private bool _picked;
+
+    private void Start()
+    {
+        _basePos = transform.position;
+        _spawnTimer = spawnCooldown;
+        _bobPhase = Random.value * 360f; // 每个掉落物错开相位,不齐步走
+    }
+
+    private void Update()
+    {
+        if (_picked)
+        {
+            return;
+        }
+
+        //生成保护时间
+        if (_spawnTimer > 0f)
+        {
+            _spawnTimer -= Time.deltaTime;
+        }
+
+        // 自转，上下浮动
+        transform.Rotate(0f, rotateSpeed * Time.deltaTime, 0f, Space.World);
+        _bobPhase += bobSpeed * Time.deltaTime;
+        transform.position = _basePos + Vector3.up * (Mathf.Sin(_bobPhase) * bobHeight);
+
+        //拾取检测
+        if (_spawnTimer > 0f) return;
+        _checkTimer -= Time.deltaTime;
+        if (_checkTimer > 0f) return;
+        _checkTimer = checkInterval;
+
+        PlayerModel player = FindNearestPlayer();
+        if (player == null) return;
+
+        float dist = Vector3.Distance(transform.position, player.transform.position);
+        if (dist <= pickupRadius)
+        {
+            PickUp();
+        }
+    }
+
+    /// <summary>
+    /// 找到最近的玩家
+    /// </summary>
+    /// <returns></returns>
+    private PlayerModel FindNearestPlayer()
+    {
+        PlayerModel[] players = GameManager.INSTANCE != null ? GameManager.INSTANCE.playerModels : null;
+        if (players == null || players.Length == 0) return null;
+
+        PlayerModel nearest = null;
+        float minDist = float.MaxValue;
+        for (int i = 0; i < players.Length; i++)
+        {
+            PlayerModel p = players[i];
+            if (p == null) continue;
+            float d = Vector3.Distance(transform.position, p.transform.position);
+            if (d < minDist)
+            {
+                minDist = d;
+                nearest = p;
+            }
+        }
+        return nearest;
+    }
+
+    /// <summary>
+    /// 执行拾取
+    /// 入账,提示,销毁
+    /// </summary>
+    private void PickUp()
+    {
+        _picked = true;
+        string message = "";
+        Color color = Color.white;
+
+        switch (pickupType)
+        {
+            case PickupType.Coin:
+                if (ShopManager.INSTANCE != null)
+                {
+                    ShopManager.INSTANCE.AddCurrency("Coin", amount);
+                }
+                message = $"获得 金币 ×{amount}";
+                color = new Color(1f, 0.84f, 0f);   // 金色
+                break;
+
+            case PickupType.Weapon:
+                if (InventoryManager.INSTANCE != null)
+                {
+                    InventoryManager.INSTANCE.AddWeapon(itemID);
+                }
+                message = $"获得 {InventoryManager.INSTANCE.GetItemName(itemID)}";
+                color = new Color(1f, 0.65f, 0.2f); // 橙色
+                break;
+
+            case PickupType.Food:
+                if (InventoryManager.INSTANCE != null)
+                {
+                    InventoryManager.INSTANCE.AddFood(itemID, amount);
+                }
+                message = $"获得 {InventoryManager.INSTANCE.GetItemName(itemID)} ×{amount}";
+                color = new Color(0.4f, 1f, 0.5f);  // 绿色
+                break;
+            case PickupType.Material:
+                if (InventoryManager.INSTANCE != null)
+                {
+                    InventoryManager.INSTANCE.AddMaterial(itemID, amount);
+                }
+                message = $"获得 {InventoryManager.INSTANCE.GetItemName(itemID)} ×{amount}";
+                color = new Color(0.7f, 0.5f, 1f); // 紫色
+                break;
+        }
+
+        // 全局提示
+        ToastUI.ShowMessage(message, color);
+
+        // 销毁物品
+        Destroy(gameObject);
+    }
+
+    /// <summary>
+    /// 生成一个掉落物
+    /// </summary>
+    /// <param name="position"></param>
+    /// <param name="drop"></param>
+    public static void Spawn(Vector3 position, LootDrop drop)
+    {
+        if (drop == null || drop.dropPrefab == null) return;
+
+        // 概率判定：生成前算一次，掉落物存在期间不再重复计算
+        if (drop.chance < 1f && Random.value > drop.chance) return;
+
+        // 落地位置随机偏移一点，避免多个掉落物完全重叠
+        Vector3 offset = new Vector3(Random.Range(-0.4f, 0.4f), 0f, Random.Range(-0.4f, 0.4f));
+        GameObject go = Instantiate(drop.dropPrefab,
+            position + Vector3.up * 0.3f + offset,
+            Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+
+        PickupItem item = go.GetComponent<PickupItem>();
+        if (item == null)
+        {
+            item = go.AddComponent<PickupItem>();
+        }
+        // 用敌人 Inspector 里配的数据覆盖预制体默认值
+        item.pickupType = drop.type;
+        item.itemID = drop.itemID;
+        item.amount = drop.amount;
+    }
+}

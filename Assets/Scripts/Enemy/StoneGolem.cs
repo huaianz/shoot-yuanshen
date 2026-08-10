@@ -72,10 +72,14 @@ public class StoneGolem : EnemyBase
             new Sequence(new IsHitCondition(this), new HitAction(this, 0.3f)),
             new Sequence(new HasTargetCondition(this),
                 new Selector(
-                    new Sequence(new PlayerDistanceCondition(this, -1f, 3f),
-                        new MeleeAttackAction(this, "Attack02", 1.2f, 1f, 3f)),
-                    new Sequence(new PlayerDistanceCondition(this, -1f, 3.5f),
-                        new RetreatAction(this, 8f)),
+                    // 5米内:近战拳击(伤害范围也是5米)
+                    new Sequence(new PlayerDistanceCondition(this, -1f, 5f),
+                    new MeleeAttackAction(this, "Attack02", 1.5f, 1f, 5f)),
+
+                    // 8米内:后退拉开距离,退到8米以上停止
+                    new Sequence(new PlayerDistanceCondition(this, -1f, 8f),
+                    new RetreatAction(this, 8f, 1.2f)),
+
                     new Sequence(new PlayerDistanceCondition(this, 15f, -1f),
                         new ChaseAction(this)),
                     new RangedAttackAction(this)

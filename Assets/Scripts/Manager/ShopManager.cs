@@ -190,6 +190,21 @@ public class ShopManager : SingleMonoBase<ShopManager>
         }
     }
 
+    /// <summary>
+    /// 增加玩家指定类型的货币
+    /// </summary>
+    public void AddCurrency(string currencyType, int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        _playerCurrency.TryGetValue(currencyType, out int current);
+        _playerCurrency[currencyType] = current + amount;
+
+        //通知所有界面刷新货币显示
+        EventHandler.CallCurrencyUpdateEvent(currencyType, GetCurrency(currencyType));
+    }
+
     // 获取玩家当前持有的某种货币数量，默认查询硬币
     public int GetCurrency(string currencyType = "Coin")
     {

@@ -186,3 +186,47 @@ public class EnemyStats
     public float retreatSpeed = 3f;//后退速度
 }
 
+/// <summary>
+/// 一条掉落配置
+/// </summary>
+[System.Serializable]
+public class LootDrop
+{
+    [Tooltip("掉落物类型")]
+    public PickupType type = PickupType.Coin;
+    [Tooltip("物品ID(武器/食物模板ID, 金币可不填)")]
+    public int itemID;
+    [Tooltip("数量(金币/食物数量)")]
+    public int amount = 1;
+    [Range(0f, 1f)]
+    [Tooltip("掉落概率, 1=必定掉落")]
+    public float chance = 1f;
+    [Tooltip("掉落物预制体")]
+    public GameObject dropPrefab;
+}
+
+/// <summary>
+/// 素材类(史莱姆凝液/丘丘人面具/石头碎片等)
+/// </summary>
+[Serializable]
+public class MaterialData
+{
+    public int materialID;
+    public string materialName;
+    public int maxStack = 99;
+    public string description;
+    public string iconPath;
+}
+
+/// <summary>
+/// 背包里的素材物品(可堆叠, 无拥有者)
+/// </summary>
+[Serializable]
+public class MaterialItem : ItemBase
+{
+    public int count = 1;
+    public MaterialItem()
+    {
+        ownerID = -1;
+    }
+}

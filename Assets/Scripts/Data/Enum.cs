@@ -46,7 +46,8 @@ public enum PackageMode
 public enum ItemType
 {
     Weapon,
-    Food
+    Food,
+    Material
 }
 
 
@@ -87,4 +88,23 @@ public enum EnemyPhase
     Combat,   // 战斗
     Hit,      // 受击硬直
     Dead      // 死亡
+}
+
+/// <summary>
+/// 掉落物品类型
+/// </summary>
+public enum PickupType
+{
+    Coin,   // 金币
+    Weapon, // 武器 
+    Food,   // 食物 
+    Material // 素材
+}
+
+public enum EnemyState
+{
+    Idle,
+    Move,
+    Attack,
+    Dead
 }

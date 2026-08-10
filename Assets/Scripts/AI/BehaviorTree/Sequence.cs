@@ -9,7 +9,7 @@ using UnityEngine;
 public class Sequence : BTNode
 {
     private readonly BTNode[] _children;
-
+    private BTNode _lastRunningChild;
     public Sequence(params BTNode[] children)
     {
         _children = children;
@@ -26,9 +26,15 @@ public class Sequence : BTNode
             }
             if (state == NodeState.Running)
             {
+                _lastRunningChild = child;
                 return NodeState.Running;
             }
         }
         return NodeState.Success;
+    }
+
+    public override BTNode GetActiveNode()
+    {
+        return _lastRunningChild != null ? _lastRunningChild.GetActiveNode() : this;
     }
 }

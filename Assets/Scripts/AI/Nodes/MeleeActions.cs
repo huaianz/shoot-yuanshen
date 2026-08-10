@@ -271,7 +271,7 @@ public class DeathAction : BTNode
             _started = true;
             _enemy.currentPhase = EnemyPhase.Dead;
             _enemy.ResetAnimationOnceCache();
-            _enemy.animator.CrossFadeInFixedTime("Dead", 0.1f);
+            _enemy.PlayDeathAnimation();
             _endTime = Time.time + 1.5f;
         }
         if (Time.time >= _endTime)
@@ -411,13 +411,17 @@ public class RetreatAction : BTNode
 {
     private readonly EnemyBase _enemy;
     private readonly float _stopDistance;
+    private readonly float _minDuration;
     private float _nextSetTime;
+    private float _startTime;
+    private bool _sessionStarted;
     private bool _strafeRight = true;
 
-    public RetreatAction(EnemyBase enemy, float stopDistance = 8f)
+    public RetreatAction(EnemyBase enemy, float stopDistance = 8f, float minDuration = 1.2f)
     {
         _enemy = enemy;
         _stopDistance = stopDistance;
+        _minDuration = minDuration;
         NodeName = "后退拉开距离";
     }
 
@@ -426,6 +430,13 @@ public class RetreatAction : BTNode
         var target = _enemy.perception != null ? _enemy.perception.Target : null;
         if (target == null) return NodeState.Failure;
 
+        // 第一次进入后退时记录开始时间
+        if (!_sessionStarted)
+        {
+            _sessionStarted = true;
+            _startTime = Time.time;
+        }
+
         _enemy.currentPhase = EnemyPhase.Combat;
         _enemy.navMeshAgent.speed = _enemy.stats.retreatSpeed;
         _enemy.navMeshAgent.isStopped = false;
@@ -433,9 +444,12 @@ public class RetreatAction : BTNode
         _enemy.SetMoveSpeed(0.8f);
 
         float dist = Vector3.Distance(_enemy.transform.position, target.transform.position);
-        if (dist >= _stopDistance)
+
+        // 距离够了 + 至少退满 minDuration 秒,才结束后退
+        if (dist >= _stopDistance && Time.time - _startTime >= _minDuration)
         {
-            return NodeState.Success;   // 拉开到 8 米以上,交给远程攻击
+            _sessionStarted = false;
+            return NodeState.Success;
         }
 
         // 后退方向 = 远离玩家
@@ -444,9 +458,9 @@ public class RetreatAction : BTNode
 
         if (Time.time >= _nextSetTime)
         {
-            _nextSetTime = Time.time + 0.3f;   // 节流
+            _nextSetTime = Time.time + 0.3f;
 
-            // 后退被挡(身后 2 米内有东西)→ 侧向横跳
+            // 后退被挡 → 侧向横跳
             if (Physics.Raycast(_enemy.transform.position, away, out RaycastHit hit, 2f))
             {
                 _strafeRight = !_strafeRight;

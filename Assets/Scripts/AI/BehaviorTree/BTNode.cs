@@ -15,4 +15,12 @@ public abstract class BTNode
     /// </summary>
     /// <returns></returns>
     public abstract NodeState Evaluate();
+
+    /// <summary>
+    /// 获取当前正在执行的子节点(调试用):组合节点会一路下钻到叶子
+    /// </summary>
+    public virtual BTNode GetActiveNode()
+    {
+        return this;
+    }
 }

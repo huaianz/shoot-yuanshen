@@ -12,6 +12,8 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     [Header("数据引用")]
     public WeaponData_SO weaponData;
     public FoodData_SO foodData;
+    public MaterialData_SO materialData;
+
 
     #region 主储存
     private Dictionary<string, ItemBase> _allItems = new Dictionary<string, ItemBase>();
@@ -20,11 +22,13 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     #region 哈希集合存储ID
     public HashSet<string> _weaponIds = new HashSet<string>();
     public HashSet<string> _foodIds = new HashSet<string>();
+    public HashSet<string> _materialIds = new HashSet<string>();
     private HashSet<string> _newItemIds = new HashSet<string>();
     #endregion
 
     #region 用来查找食物在哪个格子的字典（int是模版id，string是实例id）
     private Dictionary<int, string> _foodToInstanceId = new Dictionary<int, string>();
+    private Dictionary<int, string> _materialToInstanceId = new Dictionary<int, string>();
     #endregion
 
     #region 记录角色当前装备的武器（角色id,武器id)
@@ -34,6 +38,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     #region 缓存数据
     private List<WeaponItem> _cachedWeaponList = new List<WeaponItem>();
     private List<FoodItem> _cachedFoodList = new List<FoodItem>();
+    private List<MaterialItem> _cachedMaterialList = new List<MaterialItem>();
     private List<ItemBase> _cachedAllItems = new List<ItemBase>();
     private bool _allItemsCacheDirty = true;
     private Dictionary<int, string> _itemNameCache = new Dictionary<int, string>();
@@ -223,6 +228,96 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
         _allItemsCacheDirty = true;
     }
 
+    #region 素材方法
+    /// <summary>
+    /// 往背包里加素材
+    /// </summary>
+    /// <param name="itemID"></param>
+    /// <param name="amount"></param>
+    public void AddMaterial(int itemID, int amount)
+    {
+        var item = materialData.GetMaterialByID(itemID);
+        if (item == null)
+        {
+            return;
+        }
+
+        // 已有同种素材就叠加数量
+        if (_materialToInstanceId.TryGetValue(itemID, out string existId))
+        {
+            if (_allItems.TryGetValue(existId, out var baseItem) && baseItem is MaterialItem material)
+            {
+                material.count = Mathf.Min(material.count + amount, item.maxStack);
+                _isDirty = true;
+                _allItemsCacheDirty = true;
+                return;
+            }
+            _materialToInstanceId.Remove(itemID);
+        }
+
+        var newMaterial = new MaterialItem
+        {
+            instanceID = Guid.NewGuid().ToString("N"),
+            itemID = itemID,
+            count = Mathf.Min(amount, item.maxStack),
+            isNew = true,
+            ownerID = -1,
+        };
+
+        _allItems[newMaterial.instanceID] = newMaterial;
+        _materialIds.Add(newMaterial.instanceID);
+        _newItemIds.Add(newMaterial.instanceID);
+        _materialToInstanceId[itemID] = newMaterial.instanceID;
+
+        _isDirty = true;
+        _allItemsCacheDirty = true;
+    }
+
+    /// <summary>
+    /// 消耗素材
+    /// </summary>
+    /// <param name="instanceID"></param>
+    /// <param name="amount"></param>
+    public void ConsumeMaterial(string instanceID, int amount)
+    {
+        if (!_allItems.TryGetValue(instanceID, out var baseItem))
+        {
+            return;
+        }
+        if (!(baseItem is MaterialItem material))
+        {
+            return;
+        }
+
+        material.count -= amount;
+        if (material.count <= 0)
+        {
+            _allItems.Remove(instanceID);
+            _materialIds.Remove(instanceID);
+            _newItemIds.Remove(instanceID);
+            if (_materialToInstanceId.TryGetValue(material.itemID, out string mappedId) && mappedId == instanceID)
+            {
+                _materialToInstanceId.Remove(material.itemID);
+            }
+        }
+
+        _isDirty = true;
+        _allItemsCacheDirty = true;
+    }
+
+    /// <summary>
+    /// 获取背包里某素材的总数量
+    /// </summary>
+    public int GetMaterialCount(int itemID)
+    {
+        if (_materialToInstanceId.TryGetValue(itemID, out string existId) &&
+            _allItems.TryGetValue(existId, out var item) && item is MaterialItem m)
+        {
+            return m.count;
+        }
+        return 0;
+    }
+    #endregion
 
     /// <summary>
     /// 强制删除任意物品
@@ -266,6 +361,19 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                 _foodToInstanceId.Remove(food.itemID);
             }
         }
+        else if (item is MaterialItem material)
+        {
+            _allItems.Remove(instanceID);
+            _materialIds.Remove(instanceID);
+            if (material.isNew)
+            {
+                _newItemIds.Remove(instanceID);
+            }
+            if (_materialToInstanceId.TryGetValue(material.itemID, out string mappedMaterialId) && mappedMaterialId == instanceID)
+            {
+                _materialToInstanceId.Remove(material.itemID);
+            }
+        }
         else
         {
             return;
@@ -293,6 +401,14 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             if (food != null)
             {
                 name = food.foodName;
+            }
+            else
+            {
+                var material = materialData?.GetMaterialByID(itemID);
+                if (material != null)
+                {
+                    name = material.materialName;
+                }
             }
         }
         _itemNameCache[itemID] = name;
@@ -500,6 +616,22 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     }
 
     /// <summary>
+    /// 获取所有素材
+    /// </summary>
+    public List<MaterialItem> GetAllMaterials()
+    {
+        _cachedMaterialList.Clear();
+        foreach (var id in _materialIds)
+        {
+            if (_allItems.TryGetValue(id, out var item) && item is MaterialItem m)
+            {
+                _cachedMaterialList.Add(m);
+            }
+        }
+        return _cachedMaterialList;
+    }
+
+    /// <summary>
     /// 获取所有物品
     /// </summary>
     /// <returns></returns>
@@ -516,6 +648,11 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             {
                 _cachedAllItems.Add(_allItems[id]);
             }
+            foreach (var id in _materialIds)
+            {
+                _cachedAllItems.Add(_allItems[id]);
+            }
+
             _allItemsCacheDirty = false;
         }
         return _cachedAllItems;
@@ -583,6 +720,14 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             if (food != null && !string.IsNullOrEmpty(food.iconPath))
             {
                 loaded = Resources.Load<Sprite>(food.iconPath);
+            }
+        }
+        if (loaded == null)
+        {
+            var material = materialData?.GetMaterialByID(itemID);
+            if (material != null && !string.IsNullOrEmpty(material.iconPath))
+            {
+                loaded = Resources.Load<Sprite>(material.iconPath);
             }
         }
 
@@ -657,6 +802,11 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                 serializable.type = "Food";
                 serializable.count = food.count;
             }
+            else if (item is MaterialItem material)
+            {
+                serializable.type = "Material";
+                serializable.count = material.count;
+            }
             saveData.items.Add(serializable);
         }
 
@@ -697,6 +847,8 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             _foodIds.Clear();
             _newItemIds.Clear();
             _foodToInstanceId.Clear();
+            _materialIds.Clear();
+            _materialToInstanceId.Clear();
             _roleWeapon.Clear();
             _newWeaponCount.Clear();
             _allItemsCacheDirty = true;
@@ -722,6 +874,17 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                         itemID = serializable.templateID,
                         isNew = serializable.isNew,
                         ownerID = -1,  // 食物强制 -1
+                        count = serializable.count
+                    };
+                }
+                else if (serializable.type == "Material")
+                {
+                    item = new MaterialItem
+                    {
+                        instanceID = serializable.instanceID,
+                        itemID = serializable.templateID,
+                        isNew = serializable.isNew,
+                        ownerID = -1,
                         count = serializable.count
                     };
                 }
@@ -751,7 +914,12 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                     if (!_foodToInstanceId.ContainsKey(item.itemID))
                         _foodToInstanceId[item.itemID] = item.instanceID;
                 }
-
+                else if (item is MaterialItem material)
+                {
+                    _materialIds.Add(item.instanceID);
+                    if (!_materialToInstanceId.ContainsKey(item.itemID))
+                        _materialToInstanceId[item.itemID] = item.instanceID;
+                }
                 if (item.isNew)
                     _newItemIds.Add(item.instanceID);
             }

@@ -4,14 +4,6 @@ using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.AI;
 
-public enum EnemyState
-{
-    Idle,
-    Move,
-    Attack,
-    Dead
-}
-
 /// <summary>
 /// 敌人基类
 /// </summary>
@@ -80,6 +72,14 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     public bool IsDead => isDead;
     public float HealthRatio => health > 0 ? currentHealth / health : 0f;
     #endregion
+
+    #region 死亡掉落
+    [Header("死亡掉落")]
+    [Tooltip("死亡时按列表顺序依次生成掉落物")]
+    public List<LootDrop> lootDrops;
+    private bool lootDropped;
+    #endregion
+
     private string _lastPlayedAnim = "";
     [Tooltip("移动动画名")]
     public string walkAnimName = "Move";
@@ -87,6 +87,13 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     private bool _hasHitTrigger;   // 动画器是否有受击触发器参数
     [Tooltip("待机动画名(默认 Idle;史莱姆用 IdleNormal)")]
     public string idleAnimName = "Idle";
+
+    [Tooltip("死亡动画状态名")]
+    public string deathAnimName = "Dead";
+    /// <summary>
+    /// 当前正在执行的节点(调试面板用)
+    /// </summary>
+    public BTNode CurrentActiveNode => behaviorTree?.GetActiveNode();
     protected virtual void Awake()
     {
         stateMachine = new StateMachine(this);
@@ -113,7 +120,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         }
 
         moveSpeedHash = Animator.StringToHash("MoveSpeed");
-        // 检查动画器有没有MoveSpeed参数,有才设置(一次即可)
+        //检查动画器有没有MoveSpeed参数,有才设置(一次即可)
         if (animator != null)
         {
             foreach (var p in animator.parameters)
@@ -269,6 +276,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
             currentHealth = 0;
             isDead = true;
             Destroy(healthBar);//销毁血条
+            DropLoot();
         }
         #endregion
     }
@@ -341,6 +349,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         _lastPlayedAnim = "";
     }
 
+
     /// <summary>
     /// 设置移动动画速度参数(和僵尸一致的 MoveSpeed)
     /// </summary>
@@ -372,6 +381,44 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         if (navMeshAgent != null) navMeshAgent.enabled = false;
         Collider col = GetComponent<Collider>();
         if (col != null) col.enabled = false;
+        //死亡掉落(自爆/其他方式击杀也掉)
+        DropLoot();
+    }
+
+    /// <summary>
+    ///死亡时掉落物品(每个敌人只会掉落一次)
+    /// </summary>
+    protected virtual void DropLoot()//(新增)
+    {
+        if (lootDropped) return;
+        lootDropped = true;
+
+        if (lootDrops == null || lootDrops.Count == 0) return;
+
+        foreach (LootDrop drop in lootDrops)
+        {
+            PickupItem.Spawn(transform.position, drop);
+        }
+    }
+
+    /// <summary>
+    /// 播放死亡动画(安全版: 先检查状态是否存在, 找不到不会报错)
+    /// </summary>
+    public void PlayDeathAnimation()
+    {
+        if (animator == null) return;
+
+        // 依次尝试常见的死亡状态名
+        string[] candidates = { deathAnimName, "Dead", "Die" };
+        foreach (string name in candidates)
+        {
+            int hash = Animator.StringToHash(name);
+            if (animator.HasState(0, hash))
+            {
+                animator.CrossFadeInFixedTime(name, 0.1f);
+                return;
+            }
+        }
     }
 
     //便捷属性

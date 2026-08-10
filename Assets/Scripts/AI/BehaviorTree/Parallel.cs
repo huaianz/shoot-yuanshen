@@ -12,6 +12,7 @@ public class Parallel : BTNode
 {
     private readonly BTNode[] _children;
     private readonly bool _allMustSucceed;
+    private BTNode _lastRunningChild;
 
     public Parallel(bool allMustSucceed, params BTNode[] children)
     {
@@ -28,6 +29,7 @@ public class Parallel : BTNode
             if (state == NodeState.Running)
             {
                 anyRunning = true;
+                if (_lastRunningChild == null) _lastRunningChild = child;   // 记第一个
             }
             else if (state == NodeState.Success && !_allMustSucceed)
             {
@@ -45,5 +47,10 @@ public class Parallel : BTNode
             return NodeState.Running;
         }
         return _allMustSucceed ? NodeState.Success : NodeState.Failure;
+    }
+
+    public override BTNode GetActiveNode()
+    {
+        return _lastRunningChild != null ? _lastRunningChild.GetActiveNode() : this;
     }
 }
