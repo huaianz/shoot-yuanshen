@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.AI;
+
 
 public class GameManager : SingleMonoBase<GameManager>
 {
@@ -8,6 +11,13 @@ public class GameManager : SingleMonoBase<GameManager>
 
     [Header("角色数据")]
     public PlayerData_SO playerData_SO;
+    [Header("死亡处理")]
+    [Tooltip("战斗场景名")]
+    public string combatSceneName = "BattleMap";
+    //复活点: 目前是游戏开始时的玩家位置
+    private Vector3 _respawnPosition;
+    private Quaternion _respawnRotation;
+    private bool _respawnReady;
 
     private Dictionary<int, RoleRuntimeData> _roleDataDict = new Dictionary<int, RoleRuntimeData>();
     private int _currentActiveRoleID = -1;
@@ -26,6 +36,20 @@ public class GameManager : SingleMonoBase<GameManager>
     {
         //初始化角色系统
         InitRoles();
+        //记录安全区复活点
+        if (PlayerController.INSTANCE != null && PlayerController.INSTANCE.currentPlayerModel != null)
+        {
+            _respawnPosition = PlayerController.INSTANCE.currentPlayerModel.transform.position;
+            _respawnRotation = PlayerController.INSTANCE.currentPlayerModel.transform.rotation;
+            _respawnReady = true;
+        }
+
+        // 预热三个自动创建的 UI(懒加载单例, 需要第一次调用才会创建)
+        _ = LowHealthUI.Instance;                 // 残血红闪
+        _ = QuestTrackerUI.Instance;              // 委托追踪
+        _ = RegionBannerUI.Instance;              // 地区提示
+        RegionBannerUI.ShowRegion("安全区");      // 开局先显示一次地区
+
     }
     /// <summary>
     /// 批量删除物品
@@ -377,5 +401,84 @@ public class GameManager : SingleMonoBase<GameManager>
         data.currentHealth = Mathf.Max(0f, data.currentHealth - damage);
 
         EventHandler.CallPlayerHealthChangedEvent(data.roleID, data.currentHealth, data.finalMaxHealth);
+        //死亡: 回安全区
+        if (data.currentHealth <= 0f)
+        {
+            EventHandler.CallPlayerDiedEvent();
+            StartCoroutine(HandlePlayerDeath(data));
+        }
+
+    }
+
+    /// <summary>
+    /// 死亡处理: 等1.5秒 -> 卸载战斗场景 -> 传回安全区 -> 回满血 -> 提示
+    /// </summary>
+    private IEnumerator HandlePlayerDeath(RoleRuntimeData data)
+    {
+        yield return new WaitForSeconds(1.5f);
+
+        //卸载战斗场景
+        if (!string.IsNullOrEmpty(combatSceneName))
+        {
+            Scene combat = SceneManager.GetSceneByName(combatSceneName);
+            if (combat.isLoaded)
+            {
+                SceneManager.UnloadSceneAsync(combat);
+            }
+        }
+
+        //传回安全区复活点
+        PlayerController player = PlayerController.INSTANCE;
+        if (player != null)
+        {
+            Vector3 target = _respawnReady ? _respawnPosition : player.transform.position;
+            Quaternion targetRot = _respawnReady ? _respawnRotation : player.transform.rotation;
+
+            player.transform.position = target;
+            player.transform.rotation = targetRot;
+
+            if (player.currentPlayerModel != null)
+            {
+                CharacterController cc = player.currentPlayerModel.GetComponent<CharacterController>();
+                if (cc != null) cc.enabled = false;
+                player.currentPlayerModel.transform.position = target;
+                player.currentPlayerModel.transform.rotation = targetRot;
+                NavMeshAgent agent = player.currentPlayerModel.GetComponent<NavMeshAgent>();
+                if (agent != null) agent.enabled = false;
+                if (cc != null) cc.enabled = true;
+            }
+
+            if (GameManager.INSTANCE.playerModels != null)
+            {
+                foreach (PlayerModel m in GameManager.INSTANCE.playerModels)
+                {
+                    if (m == null || m == player.currentPlayerModel) continue;
+                    CharacterController cc2 = m.GetComponent<CharacterController>();
+                    if (cc2 != null) cc2.enabled = false;
+                    m.transform.position = target;
+                    m.transform.rotation = targetRot;
+                    NavMeshAgent ag = m.GetComponent<NavMeshAgent>();
+                    if (ag != null)
+                    {
+                        if (NavMesh.SamplePosition(target, out NavMeshHit hit, 5f, NavMesh.AllAreas))
+                        {
+                            m.transform.position = hit.position;
+                        }
+                        ag.enabled = true;
+                        ag.Warp(m.transform.position);
+                        ag.isStopped = false;
+                    }
+                    if (cc2 != null) cc2.enabled = true;
+                }
+            }
+        }
+
+        //回满血
+        data.currentHealth = data.finalMaxHealth;
+        EventHandler.CallPlayerHealthChangedEvent(data.roleID, data.currentHealth, data.finalMaxHealth);
+        // 回城时显示地区提示
+        RegionBannerUI.ShowRegion("安全区");
+        //提示
+        ToastUI.ShowMessage("你阵亡了，已返回安全区休整", new Color(1f, 0.5f, 0.3f));
     }
 }

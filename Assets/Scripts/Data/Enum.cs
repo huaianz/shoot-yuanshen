@@ -108,3 +108,12 @@ public enum EnemyState
     Attack,
     Dead
 }
+
+/// <summary>
+/// 委托类型
+/// </summary>
+public enum QuestType
+{
+    Kill,    // 消灭指定类型的敌人
+    Collect  // 收集指定物品
+}

@@ -5,10 +5,24 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// 全局消息提示
+/// 全局消息提示：消息会排队显示，一条播完再播下一条，
+/// 不会被紧接着的拾取提示立刻覆盖（比如金色"委托完成"不会被"获得金币"冲掉）。
 /// </summary>
 public class ToastUI : MonoBehaviour
 {
+    // ===== 一条待显示的消息 =====
+    private struct ToastMessage
+    {
+        public string text;
+        public Color color;
+
+        public ToastMessage(string text, Color color)
+        {
+            this.text = text;
+            this.color = color;
+        }
+    }
+
     //懒加载单例
     private static ToastUI _instance;
     public static ToastUI Instance
@@ -43,13 +57,17 @@ public class ToastUI : MonoBehaviour
     private Vector2 _startPos;
     private Coroutine _animCoroutine;
 
+    //消息队列：还没轮到的提示都存在这里
+    private Queue<ToastMessage> _messageQueue = new Queue<ToastMessage>();
+    //当前是否正在播放一条提示
+    private bool _isShowing;
+
     //字体缓存
     private static TMP_FontAsset _font;
 
     /// <summary>
     /// 自动创建ToastUI
     /// </summary>
-    /// <returns></returns>
     public static ToastUI CreateNew()
     {
         GameObject go = new GameObject("ToastUI");
@@ -60,7 +78,7 @@ public class ToastUI : MonoBehaviour
     }
 
     /// <summary>
-    /// 运行时创建UI结构
+    /// 运行时创建UI结构（只创建一次，之后全部复用）
     /// </summary>
     private void BuildUI()
     {
@@ -95,19 +113,20 @@ public class ToastUI : MonoBehaviour
         _text.color = Color.white;
         _text.text = "";
 
-        //anvasGroup：用来整体淡出
+        //CanvasGroup：用来整体淡出
         _canvasGroup = textGo.AddComponent<CanvasGroup>();
         _canvasGroup.alpha = 0f;
     }
 
     /// <summary>
-    /// 从Resources加载一个支持中文的 SDF 字体
+    /// 从Resources加载一个支持中文的 SDF 字体（只加载一次）
     /// </summary>
-    /// <returns></returns>
     private static TMP_FontAsset LoadFont()
     {
         if (_font != null)
+        {
             return _font;
+        }
         string[] candidates =
         {
             "font/MSYH SDF",
@@ -124,16 +143,13 @@ public class ToastUI : MonoBehaviour
                 return _font;
             }
         }
-
-        //没有找到可用的字体
         return null;
     }
 
     /// <summary>
-    /// 显示一条提示
+    /// 显示一条提示：先放进队列，没在播就立刻开始播；
+    /// 正在播就等它播完再播下一条（排队，不互相覆盖）
     /// </summary>
-    /// <param name="msg"></param>
-    /// <param name="color"></param>
     public void Show(string msg, Color? color = null)
     {
         if (string.IsNullOrEmpty(msg))
@@ -144,31 +160,50 @@ public class ToastUI : MonoBehaviour
         {
             BuildUI();
         }
-        _text.text = msg;
-        if (color.HasValue)
+
+        // 1. 把这条消息放进队列
+        _messageQueue.Enqueue(new ToastMessage(msg, color ?? Color.white));
+
+        // 2. 如果当前没有在播放，立刻开始播队列里的第一条
+        if (!_isShowing)
         {
-            _text.color = color.Value;
+            ShowNext();
         }
-        //复位
+    }
+
+    /// <summary>
+    /// 从队列取出一条消息并开始播放动画
+    /// </summary>
+    private void ShowNext()
+    {
+        // 队列空了：结束播放状态
+        if (_messageQueue.Count == 0)
+        {
+            _isShowing = false;
+            return;
+        }
+
+        _isShowing = true;
+        ToastMessage m = _messageQueue.Dequeue();
+
+        // 写入文字和颜色，并复位到起始位置
+        _text.text = m.text;
+        _text.color = m.color;
         _textRect.anchoredPosition = _startPos;
         _canvasGroup.alpha = 1f;
-        // 连续消息以最后一条为准：先停掉旧动画
-        if (_animCoroutine != null)
-        {
-            StopCoroutine(_animCoroutine);
-        }
+
         _animCoroutine = StartCoroutine(Animate());
     }
 
     /// <summary>
-    /// 动画方式为先停留，然后上移加淡化，最后隐藏
+    /// 动画：先停留，然后上移+淡出；播完自动播下一条
     /// </summary>
-    /// <returns></returns>
     private IEnumerator Animate()
     {
-        //原地停留一小会儿
+        // 原地停留一小会儿
         yield return new WaitForSeconds(stayDuration);
-        //上移加淡化
+
+        // 上移+淡出
         float t = 0f;
         Vector2 from = _startPos;
         Vector2 to = from + Vector2.up * floatUpDistance;
@@ -177,7 +212,7 @@ public class ToastUI : MonoBehaviour
         {
             t += Time.deltaTime;
             float p = Mathf.Clamp01(t / floatDuration);
-            //先快后慢
+            // 先快后慢
             float eased = 1f - Mathf.Pow(1f - p, 2f);
 
             _textRect.anchoredPosition = Vector2.Lerp(from, to, eased);
@@ -185,19 +220,20 @@ public class ToastUI : MonoBehaviour
             yield return null;
         }
 
-        //清空文字并隐藏
+        // 清空文字并隐藏
         _canvasGroup.alpha = 0f;
         _text.text = "";
         _animCoroutine = null;
+
+        // 一条播完，播下一条（队列里还有就继续，没有就结束）
+        ShowNext();
     }
 
     /// <summary>
-    /// 静态快捷入口：任何脚本直接 ToastUI.ShowMessage("文字")即可
+    /// 静态快捷入口：任何脚本直接 ToastUI.ShowMessage("文字") 即可
     /// </summary>
     public static void ShowMessage(string msg, Color? color = null)
     {
         Instance.Show(msg, color);
     }
 }
-
-

@@ -158,6 +158,14 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     }
     private void OnAnimatorMove()
     {
+        // 人机模型: 位置由 NavMeshAgent 控制, 动画只做表现, 不叠加根运动
+        if (PlayerController.INSTANCE != null &&
+            PlayerController.INSTANCE.currentPlayerModel != null &&
+            PlayerController.INSTANCE.currentPlayerModel != this)
+        {
+            return;
+        }
+
         Vector3 playerDeltaMovement = animtor.deltaPosition;//获取动画控制器当前帧的位置信息
         if (currentState != PlayerState.Hover)
         {

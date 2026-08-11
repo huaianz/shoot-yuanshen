@@ -90,6 +90,15 @@ public static class EventHandler
     {
         PlayerHealthChangedEvent?.Invoke(roleID, currentHealth, maxHealth);
     }
+
+    /// <summary>
+    /// 玩家死亡事件
+    /// </summary>
+    public static event System.Action PlayerDiedEvent;
+    public static void CallPlayerDiedEvent()
+    {
+        PlayerDiedEvent?.Invoke();
+    }
     #endregion
 
 
@@ -111,4 +120,26 @@ public static class EventHandler
         SoundEvent?.Invoke(position, radius);
     }
     #endregion
+
+    #region 委托事件
+    /// <summary>
+    /// 敌人被击杀事件
+    /// </summary>
+    public static event System.Action<string> EnemyKilledEvent;
+    public static void CallEnemyKilledEvent(string enemyType)
+    {
+        EnemyKilledEvent?.Invoke(enemyType);
+    }
+
+    /// <summary>
+    /// 拾取物品事件。
+    /// </summary>
+    public static event System.Action<int, int> ItemCollectedEvent;
+    public static void CallItemCollectedEvent(int itemID, int amount)
+    {
+        ItemCollectedEvent?.Invoke(itemID, amount);
+    }
+    #endregion
 }
+
+

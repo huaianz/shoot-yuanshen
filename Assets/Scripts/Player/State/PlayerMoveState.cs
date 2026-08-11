@@ -86,7 +86,10 @@ public class PlayerMoveState : PlayerStateBase
                 playerModel.SwitchState(PlayerState.Idle);
                 return;
             }
-            playerModel.navMeshAgent.SetDestination(playerController.currentPlayerModel.transform.position);
+            if (playerModel.navMeshAgent != null && playerModel.navMeshAgent.enabled && playerModel.navMeshAgent.isOnNavMesh)
+            {
+                playerModel.navMeshAgent.SetDestination(playerController.currentPlayerModel.transform.position);
+            }
             #endregion
         }
     }

@@ -77,6 +77,8 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     [Header("死亡掉落")]
     [Tooltip("死亡时按列表顺序依次生成掉落物")]
     public List<LootDrop> lootDrops;
+    [Tooltip("敌人类型标识")]
+    public string enemyType = "Hilichurl";
     private bool lootDropped;
     #endregion
 
@@ -308,7 +310,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     /// </summary>
     public virtual void chaseTarget()
     {
-        if (HasAttackTarget())
+        if (HasAttackTarget() && navMeshAgent != null && navMeshAgent.enabled && navMeshAgent.isOnNavMesh)
         {
             navMeshAgent.SetDestination(attackTarget.transform.position);
         }
@@ -392,6 +394,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     {
         if (lootDropped) return;
         lootDropped = true;
+        EventHandler.CallEnemyKilledEvent(enemyType);
 
         if (lootDrops == null || lootDrops.Count == 0) return;
 

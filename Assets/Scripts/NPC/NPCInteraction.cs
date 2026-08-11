@@ -67,8 +67,9 @@ public class NPCInteraction : MonoBehaviour
             case NPCType.Shop:
                 EventHandler.CallOpenShopEvent(shopID);
                 break;
+
             case NPCType.Quest:
-                Debug.Log("任务NPC交互");
+                DialogueManager.INSTANCE.StartDialogue(dialogueID);
                 break;
         }
     }

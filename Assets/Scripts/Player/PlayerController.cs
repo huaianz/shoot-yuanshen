@@ -49,6 +49,8 @@ public class PlayerController : SingleMonoBase<PlayerController>
     public Vector3 localMovement;//本地空间下的玩家移动方向
     [HideInInspector]
     public Vector3 worldMovement;//世界空间下的玩家移动方向
+    //是否已经提示过"模型没拖出Player"的警告(只提示一次)
+    private bool _warnedReparent;
     protected override void Awake()
     {
         base.Awake();
@@ -56,6 +58,10 @@ public class PlayerController : SingleMonoBase<PlayerController>
     }
     void Start()
     {
+        if (currentPlayerModel != null)
+        {
+            currentPlayerModel.Enter();
+        }
         cameraTransform = Camera.main.transform;
         //Cursor.lockState = CursorLockMode.Locked;//锁定光标
         ExitAim();
@@ -116,6 +122,28 @@ public class PlayerController : SingleMonoBase<PlayerController>
             SwitchPlayerModel(2);
         }
         #endregion
+    }
+
+    /// <summary>
+    /// Player 根物体跟随当前模型: 保证 Player 坐标 == 模型坐标(方案A)
+    /// 前提: 模型(Lumine FBX/Pilot Furina)已从 Player 下拖出, 成为场景根物体
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (currentPlayerModel == null) return;
+
+        // 如果模型还是 Player 的子物体, 直接跟会双重移动, 先警告并跳过
+        if (currentPlayerModel.transform.IsChildOf(transform))
+        {
+            if (!_warnedReparent)
+            {
+                _warnedReparent = true;
+                Debug.LogWarning("PlayerController: 请把角色模型(Lumine FBX/Pilot Furina)从 Player 下拖出来(放到场景根), 跟随逻辑才会生效");
+            }
+            return;
+        }
+
+        transform.position = currentPlayerModel.transform.position;
     }
 
     /// <summary>

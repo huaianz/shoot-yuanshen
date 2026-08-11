@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.AI;
 using System.Collections;
 
 public class PortalTeleport : MonoBehaviour
@@ -20,7 +21,7 @@ public class PortalTeleport : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.GetComponentInParent<PlayerController>() == null) return;
+        if (other.GetComponentInParent<PlayerController>() == null && other.GetComponentInParent<PlayerModel>() == null) return;
         if (Time.time - _lastTeleportTime < cooldown) return;
         _lastTeleportTime = Time.time;
         StartCoroutine(TeleportRoutine());
@@ -28,7 +29,7 @@ public class PortalTeleport : MonoBehaviour
 
     private IEnumerator TeleportRoutine()
     {
-        // 1. 加载目标场景
+        //加载目标场景
         if (!string.IsNullOrEmpty(targetScene))
         {
             Scene target = SceneManager.GetSceneByName(targetScene);
@@ -39,29 +40,72 @@ public class PortalTeleport : MonoBehaviour
             }
         }
 
-        // 2. 找到玩家和出口
+        //找到玩家根物体和出口
         PlayerController player = FindObjectOfType<PlayerController>();
         GameObject exit = GameObject.Find(exitObjectName);
         if (player == null || exit == null) yield break;
 
-        // 3. 关键修复:传送当前角色模型,而不是玩家根物体
-        //    因为移动/碰撞都在模型身上(它有 CharacterController)
-        Transform model = player.currentPlayerModel != null
-            ? player.currentPlayerModel.transform
-            : player.transform;
+        Vector3 targetPos = exit.transform.position;
+        Quaternion targetRot = exit.transform.rotation;
 
-        CharacterController cc = model.GetComponent<CharacterController>();
-        if (cc != null) cc.enabled = false;      // 先关控制器才能改位置
-        model.position = exit.transform.position;
-        model.rotation = exit.transform.rotation;
-        if (cc != null) cc.enabled = true;
+        player.transform.position = targetPos;
+        player.transform.rotation = targetRot;
 
-        // 4. 返回传送门:站稳后卸载旧场景
+        //再传所有角色模型(包含当前模型), 保证旧场景不留任何"玩家"残影
+        if (player.currentPlayerModel != null)
+        {
+            TeleportModel(player.currentPlayerModel, targetPos, targetRot, true);
+        }
+        if (GameManager.INSTANCE != null && GameManager.INSTANCE.playerModels != null)
+        {
+            foreach (PlayerModel m in GameManager.INSTANCE.playerModels)
+            {
+                if (m != null && m != player.currentPlayerModel)
+                {
+                    TeleportModel(m, targetPos, targetRot, false);
+                }
+            }
+        }
+
+        //站稳后卸载旧场景
         if (!string.IsNullOrEmpty(unloadScene))
         {
             yield return null;
             Scene oldScene = SceneManager.GetSceneByName(unloadScene);
             if (oldScene.isLoaded) SceneManager.UnloadSceneAsync(oldScene);
         }
+    }
+
+    /// <summary>
+    /// 传送单个角色模型: 当前控制模型关寻路, 备用模型开寻路继续跟随
+    /// </summary>
+    private void TeleportModel(PlayerModel model, Vector3 pos, Quaternion rot, bool isControlled)
+    {
+        CharacterController cc = model.GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+
+        model.transform.position = pos;
+        model.transform.rotation = rot;
+
+        NavMeshAgent agent = model.GetComponent<NavMeshAgent>();
+        if (agent != null)
+        {
+            if (isControlled)
+            {
+                agent.enabled = false;
+            }
+            else
+            {
+                if (NavMesh.SamplePosition(pos, out NavMeshHit navHit, 5f, NavMesh.AllAreas))
+                {
+                    model.transform.position = navHit.position;
+                }
+                agent.enabled = true;
+                agent.Warp(model.transform.position);
+                agent.isStopped = false;
+            }
+        }
+
+        if (cc != null) cc.enabled = true;
     }
 }

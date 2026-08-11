@@ -230,3 +230,29 @@ public class MaterialItem : ItemBase
         ownerID = -1;
     }
 }
+
+/// <summary>
+/// 一波里的一群敌人
+/// </summary>
+[System.Serializable]
+public class WaveEnemy
+{
+    [Tooltip("敌人预制体")]
+    public GameObject enemyPrefab;
+    [Tooltip("这一组刷几只")]
+    public int count = 1;
+}
+
+/// <summary>
+/// 一波的配置
+/// </summary>
+[System.Serializable]
+public class WaveConfig
+{
+    [Tooltip("波次名字")]
+    public string waveName = "第1波";
+    [Tooltip("这一波有哪些敌人")]
+    public List<WaveEnemy> enemies = new List<WaveEnemy>();
+    [Tooltip("这一波清完后, 等几秒再出下一波")]
+    public float nextWaveDelay = 3f;
+}

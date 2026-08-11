@@ -126,9 +126,15 @@ public class DialogueManager : SingleMonoBase<DialogueManager>
                 EventHandler.CallOpenShopEvent(1);//默认商店ID=1
                 break;
             case ActionType.TriggerEvent:
+                if (action.eventName == "AcceptQuest")
+                {
+                    QuestManager.INSTANCE?.AcquireQuest(action.itemID);
+                }
                 break;
             case ActionType.CompleteQuest:
+                QuestManager.INSTANCE?.SubmitQuest();
                 break;
+
         }
     }
 
@@ -155,6 +161,14 @@ public class DialogueManager : SingleMonoBase<DialogueManager>
         if (food != null)
         {
             InventoryManager.INSTANCE.AddFood(itemID, amount);
+            return;
+        }
+
+        // 尝试作为素材添加
+        var material = InventoryManager.INSTANCE.materialData?.GetMaterialByID(itemID);
+        if (material != null)
+        {
+            InventoryManager.INSTANCE.AddMaterial(itemID, amount);
             return;
         }
     }

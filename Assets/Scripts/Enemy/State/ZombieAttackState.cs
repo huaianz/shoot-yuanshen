@@ -30,7 +30,11 @@ public class ZombieAttackState : EnemyStateBase
         // 每帧只比较一次时间,比查询动画状态便宜得多
         if (Time.time >= _attackEndTime)
         {
-            GameManager.INSTANCE?.ApplyDamageToActiveRole(enemyModel.attackDamage);
+            // 只有玩家还在攻击范围内才结算伤害, 防止跨地图/跑远后还被扣血
+            if (enemyModel.IsAttackTargetInAttackRange())
+            {
+                GameManager.INSTANCE?.ApplyDamageToActiveRole(enemyModel.attackDamage);
+            }
             enemyModel.SwitchState(EnemyState.Idle);
         }
     }
