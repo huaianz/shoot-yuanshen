@@ -1,8 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// 云存档管理器: 登录后自动下载金币+背包, 变化打脏标记, 每5秒节流上传。
-/// 性能: 只有变化才传(脏标记), 合并成5秒一次, 事件驱动零轮询。
+/// 云存档管理器: 登录后下载, 变化打脏标记, 5秒节流上传。
+/// 下载的数据会等到游戏场景(管理器)就绪后再应用。
 /// </summary>
 public class CloudSaveManager : MonoBehaviour
 {
@@ -31,10 +31,14 @@ public class CloudSaveManager : MonoBehaviour
     private float _timer;
     private bool _dirty;
 
+    // 待应用的数据(登录时下载, 等游戏场景就绪)
+    private int? _pendingCoin;
+    private string _pendingInventory;
+
     private void OnEnable()
     {
         EventHandler.CurrencyUpdateEvent += OnCurrencyChanged;
-        EventHandler.InventoryChangedEvent += OnInventoryChanged;   // 新增: 背包变化
+        EventHandler.InventoryChangedEvent += OnInventoryChanged;
         GameClient.Instance.OnLoginResult += OnLoginResult;
         GameClient.Instance.OnPlayerDataResult += OnPlayerDataResult;
     }
@@ -49,6 +53,10 @@ public class CloudSaveManager : MonoBehaviour
 
     private void Update()
     {
+        // 1. 有下载数据待应用, 且管理器就绪 -> 应用
+        TryApplyPending();
+
+        // 2. 脏标记 + 节流上传
         if (!_dirty) return;
         if (!GameClient.Instance.IsLoggedIn) return;
 
@@ -65,9 +73,6 @@ public class CloudSaveManager : MonoBehaviour
         if (currencyType == "Coin") _dirty = true;
     }
 
-    /// <summary>
-    /// 背包变化 -> 打脏标记
-    /// </summary>
     private void OnInventoryChanged()
     {
         _dirty = true;
@@ -81,30 +86,34 @@ public class CloudSaveManager : MonoBehaviour
         GameClient.Instance.GetPlayerData();
     }
 
-    /// <summary>
-    /// 收到服务器数据 -> 覆盖金币 + 恢复背包
-    /// </summary>
     private void OnPlayerDataResult(PlayerDataResult r)
     {
         if (!r.success) return;
-
-        if (ShopManager.INSTANCE != null)
-        {
-            ShopManager.INSTANCE.SetCurrency("Coin", r.coin);
-        }
-        if (InventoryManager.INSTANCE != null)
-        {
-            // 服务器有背包就恢复; 空背包保留本地(导入方法内部判断)
-            InventoryManager.INSTANCE.ImportFromCloudJson(r.inventoryJson);
-        }
-
-        _dirty = false;
-        _timer = 0f;
+        // 先缓存, 等游戏场景加载后再套用
+        _pendingCoin = r.coin;
+        _pendingInventory = r.inventoryJson;
+        TryApplyPending();
     }
 
     /// <summary>
-    /// 上传金币+背包到服务器
+    /// 应用下载的数据(ShopManager/InventoryManager 存在时才执行)
     /// </summary>
+    private void TryApplyPending()
+    {
+        if (!_pendingCoin.HasValue) return;
+        if (ShopManager.INSTANCE == null || InventoryManager.INSTANCE == null) return;
+
+        ShopManager.INSTANCE.SetCurrency("Coin", _pendingCoin.Value);
+        InventoryManager.INSTANCE.ImportFromCloudJson(_pendingInventory);
+
+        _dirty = false;
+        _timer = 0f;
+        ToastUI.ShowMessage($"云存档同步完成（金币 {_pendingCoin.Value}）", new Color(0.4f, 1f, 0.5f));
+
+        _pendingCoin = null;
+        _pendingInventory = null;
+    }
+
     private void Upload()
     {
         if (ShopManager.INSTANCE == null || InventoryManager.INSTANCE == null) return;

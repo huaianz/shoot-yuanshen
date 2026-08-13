@@ -47,9 +47,7 @@ public class GameManager : SingleMonoBase<GameManager>
         // 预热三个自动创建的 UI(懒加载单例, 需要第一次调用才会创建)
         _ = LowHealthUI.Instance;                 // 残血红闪
         _ = QuestTrackerUI.Instance;              // 委托追踪
-        _ = RegionBannerUI.Instance;              // 地区提示
-        _ = LoginUI.Instance;  // 登录界面
-        _ = CloudSaveManager.Instance;
+        _ = RegionBannerUI.Instance;              // 地区提示        _ = CloudSaveManager.Instance;
         RegionBannerUI.ShowRegion("安全区");      // 开局先显示一次地区
 
     }
