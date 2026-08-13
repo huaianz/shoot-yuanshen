@@ -140,6 +140,17 @@ public static class EventHandler
         ItemCollectedEvent?.Invoke(itemID, amount);
     }
     #endregion
+
+    #region 背包事件
+    /// <summary>
+    /// 背包内容变化事件(拾取/购买/消耗/删除都会触发, 云存档用)
+    /// </summary>
+    public static event System.Action InventoryChangedEvent;
+    public static void CallInventoryChangedEvent()
+    {
+        InventoryChangedEvent?.Invoke();
+    }
+    #endregion
 }
 
 

@@ -256,3 +256,23 @@ public class WaveConfig
     [Tooltip("这一波清完后, 等几秒再出下一波")]
     public float nextWaveDelay = 3f;
 }
+
+/// <summary>
+/// 云背包里的一个物品(只保存类型/ID/数量, 不带装备状态)
+/// </summary>
+[System.Serializable]
+public class CloudItemData
+{
+    public string type;    // "Weapon" / "Food" / "Material"
+    public int itemID;
+    public int count;
+}
+
+/// <summary>
+/// 云背包整体(序列化成 JSON 存到服务器)
+/// </summary>
+[System.Serializable]
+public class CloudInventoryData
+{
+    public System.Collections.Generic.List<CloudItemData> items = new System.Collections.Generic.List<CloudItemData>();
+}

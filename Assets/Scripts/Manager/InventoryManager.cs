@@ -135,6 +135,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
 
         _isDirty = true;
         _allItemsCacheDirty = true;
+        EventHandler.CallInventoryChangedEvent();
     }
 
     /// <summary>
@@ -164,6 +165,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                 }
                 _isDirty = true;
                 _allItemsCacheDirty = true;
+                EventHandler.CallInventoryChangedEvent();
                 return;
             }
             else
@@ -188,6 +190,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
 
         _isDirty = true;
         _allItemsCacheDirty = true;
+        EventHandler.CallInventoryChangedEvent();
     }
 
     /// <summary>
@@ -226,6 +229,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
 
         _isDirty = true;
         _allItemsCacheDirty = true;
+        EventHandler.CallInventoryChangedEvent();
     }
 
     #region 素材方法
@@ -303,6 +307,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
 
         _isDirty = true;
         _allItemsCacheDirty = true;
+        EventHandler.CallInventoryChangedEvent();
     }
 
     /// <summary>
@@ -381,6 +386,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
 
         _isDirty = true;
         _allItemsCacheDirty = true;
+        EventHandler.CallInventoryChangedEvent();
     }
 
     public string GetItemName(int itemID)
@@ -629,6 +635,82 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             }
         }
         return _cachedMaterialList;
+    }
+
+    /// <summary>
+    /// 把整个背包导出成 JSON(上传到服务器用)
+    /// </summary>
+    public string ExportToCloudJson()
+    {
+        var data = new CloudInventoryData();
+
+        foreach (var id in _weaponIds)
+        {
+            if (_allItems.TryGetValue(id, out var it) && it is WeaponItem w)
+                data.items.Add(new CloudItemData { type = "Weapon", itemID = w.itemID, count = 1 });
+        }
+        foreach (var id in _foodIds)
+        {
+            if (_allItems.TryGetValue(id, out var it) && it is FoodItem f)
+                data.items.Add(new CloudItemData { type = "Food", itemID = f.itemID, count = f.count });
+        }
+        foreach (var id in _materialIds)
+        {
+            if (_allItems.TryGetValue(id, out var it) && it is MaterialItem m)
+                data.items.Add(new CloudItemData { type = "Material", itemID = m.itemID, count = m.count });
+        }
+
+        return JsonUtility.ToJson(data);
+    }
+
+    /// <summary>
+    /// 从服务器 JSON 恢复背包。
+    /// 规则: 服务器是空背包就不覆盖本地(避免第一次登录清空你的东西);
+    /// 服务器有内容就用服务器覆盖本地。
+    /// </summary>
+    public void ImportFromCloudJson(string json)
+    {
+        if (string.IsNullOrEmpty(json)) return;
+
+        CloudInventoryData data;
+        try
+        {
+            data = JsonUtility.FromJson<CloudInventoryData>(json);
+        }
+        catch
+        {
+            return;
+        }
+        if (data == null || data.items == null || data.items.Count == 0) return;
+
+        // 清空本地(和读档逻辑一致)
+        _allItems.Clear();
+        _weaponIds.Clear();
+        _foodIds.Clear();
+        _materialIds.Clear();
+        _newItemIds.Clear();
+        _foodToInstanceId.Clear();
+        _materialToInstanceId.Clear();
+        _roleWeapon.Clear();
+        _newWeaponCount.Clear();
+        _allItemsCacheDirty = true;
+
+        // 逐条重建
+        foreach (var item in data.items)
+        {
+            switch (item.type)
+            {
+                case "Weapon":
+                    AddWeapon(item.itemID);
+                    break;
+                case "Food":
+                    AddFood(item.itemID, item.count);
+                    break;
+                case "Material":
+                    AddMaterial(item.itemID, item.count);
+                    break;
+            }
+        }
     }
 
     /// <summary>

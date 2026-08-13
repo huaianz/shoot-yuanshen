@@ -211,4 +211,13 @@ public class ShopManager : SingleMonoBase<ShopManager>
         //能找到则返回余额，找不到则返回0
         return _playerCurrency.TryGetValue(currencyType, out int amount) ? amount : 0;
     }
+
+    /// <summary>
+    /// 直接设置货币数量(登录时用服务器数据覆盖)
+    /// </summary>
+    public void SetCurrency(string currencyType, int amount)
+    {
+        _playerCurrency[currencyType] = Mathf.Max(0, amount);
+        EventHandler.CallCurrencyUpdateEvent(currencyType, GetCurrency(currencyType));
+    }
 }
