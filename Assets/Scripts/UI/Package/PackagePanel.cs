@@ -270,6 +270,21 @@ public class PackagePanel : BaseUIPanel
         if (detailBtnTrans != null)
         {
             detailBtn = detailBtnTrans.GetComponent<Button>();
+            // 把原来的"详情"按钮改成"食用"按钮(改标签文本)
+            var label = detailBtnTrans.Find("Text");
+            if (label != null)
+            {
+                TextMeshProUGUI labelTmp = label.GetComponent<TextMeshProUGUI>();
+                if (labelTmp != null)
+                {
+                    labelTmp.text = "食用";
+                }
+                else
+                {
+                    Text labelLegacy = label.GetComponent<Text>();
+                    if (labelLegacy != null) labelLegacy.text = "食用";
+                }
+            }
         }
         //总容量
 
@@ -310,7 +325,7 @@ public class PackagePanel : BaseUIPanel
         }
         if (detailBtn != null)
         {
-            detailBtn.onClick.AddListener(OnDetail);
+            detailBtn.onClick.AddListener(OnEatFood);
         }
         #endregion
 
@@ -359,6 +374,9 @@ public class PackagePanel : BaseUIPanel
         if (selectWeapon != null) selectWeapon.gameObject.SetActive(isWeapon);
         if (selectFood != null) selectFood.gameObject.SetActive(isFood);
         if (selectMaterial != null) selectMaterial.gameObject.SetActive(!isWeapon && !isFood);
+
+        // 切换标签页后刷新底部"食用"按钮显隐
+        RefreshBottomMenuState();
     }
     #endregion
 
@@ -446,6 +464,7 @@ public class PackagePanel : BaseUIPanel
         if (string.IsNullOrEmpty(chooseUID))
         {
             ClearDetailPanel();
+            RefreshBottomMenuState();
             return;
         }
 
@@ -453,8 +472,12 @@ public class PackagePanel : BaseUIPanel
         if (item == null)
         {
             ClearDetailPanel();
+            RefreshBottomMenuState();
             return;
         }
+
+        // 更新底部"食用"按钮显隐(只有选中食物时才显示)
+        RefreshBottomMenuState();
 
         if (_currentTabType == GameManager.GameConst.PackageTypeWeapon)
         {
@@ -477,7 +500,7 @@ public class PackagePanel : BaseUIPanel
                 return;
             }
             if (foodNameText != null) foodNameText.text = food.foodName;
-            if (foodDescText != null) foodDescText.text = food.description;
+            if (foodDescText != null) foodDescText.text = BuildFoodDescription(food);
             Sprite icon = InventoryManager.INSTANCE.GetIcon(item.itemID);
             if (foodIcon != null) foodIcon.sprite = icon;
         }
@@ -700,10 +723,80 @@ public class PackagePanel : BaseUIPanel
         RefreshDeletePanel();
     }
 
-    private void OnDetail()
+    /// <summary>
+    /// 食用当前选中的食物
+    /// </summary>
+    private void OnEatFood()
     {
-        // 显示详情（可扩展）
-        print(">>>>> OnDetail");
+        // 只在食物标签页生效
+        if (_currentTabType != GameManager.GameConst.PackageTypeFood) return;
+        if (string.IsNullOrEmpty(chooseUID)) return;
+
+        ItemBase item = InventoryManager.INSTANCE.GetItem(chooseUID);
+        if (item == null || !(item is FoodItem foodItem)) return;
+        Food food = InventoryManager.INSTANCE.foodData?.GetFoodByID(item.itemID);
+        if (food == null) return;
+
+        // 应用回血效果
+        if (food.healType == FoodHealType.OverTime && food.tickInterval > 0f)
+        {
+            float duration = food.overTimeDuration > 0f ? food.overTimeDuration : 60f;
+            GameManager.INSTANCE.HealActiveRoleOverTime(duration, food.tickInterval, food.healAmount);
+            int ticks = Mathf.CeilToInt(duration / food.tickInterval);
+            ToastUI.ShowMessage($"食用 {food.foodName}：{duration:F0} 秒内每 {food.tickInterval:F0} 秒恢复 {food.healAmount} 生命", new Color(0.4f, 1f, 0.5f));
+        }
+        else
+        {
+            GameManager.INSTANCE.HealActiveRole(food.healAmount);
+            ToastUI.ShowMessage($"食用 {food.foodName}：恢复 {food.healAmount} 生命", new Color(0.4f, 1f, 0.5f));
+        }
+
+        // 消耗 1 个食物
+        InventoryManager.INSTANCE.ConsumeFood(item.instanceID, 1);
+
+        // 刷新列表和详情
+        RefreshScroll(_currentTabType);
+        if (InventoryManager.INSTANCE.GetItem(chooseUID) == null)
+        {
+            chooseUID = null;
+        }
+        else
+        {
+            RefreshDetail();
+        }
+        UpdateCapacityDisplay();
+    }
+
+    /// <summary>
+    /// 底部"食用"按钮显隐: 只有选中食物时才显示
+    /// </summary>
+    private void RefreshBottomMenuState()
+    {
+        bool canEat = _currentTabType == GameManager.GameConst.PackageTypeFood
+                      && !string.IsNullOrEmpty(chooseUID)
+                      && InventoryManager.INSTANCE.GetItem(chooseUID) is FoodItem;
+        if (detailBtn != null)
+        {
+            detailBtn.gameObject.SetActive(canEat);
+        }
+    }
+
+    /// <summary>
+    /// 生成食物描述: 原描述 + 自动追加回血说明
+    /// </summary>
+    private string BuildFoodDescription(Food food)
+    {
+        string desc = string.IsNullOrEmpty(food.description) ? "" : food.description.Trim();
+        if (food.healType == FoodHealType.OverTime && food.tickInterval > 0f)
+        {
+            float duration = food.overTimeDuration > 0f ? food.overTimeDuration : 60f;
+            desc += $"\n\n{duration:F0} 秒内每 {food.tickInterval:F0} 秒恢复 {food.healAmount} 点生命";
+        }
+        else
+        {
+            desc += $"\n\n立即恢复 {food.healAmount} 点生命";
+        }
+        return desc;
     }
 
     /// <summary>

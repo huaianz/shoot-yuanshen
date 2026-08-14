@@ -20,6 +20,7 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
     //存放星级的GameObject数组
     private GameObject[] starObjects;
     private TextMeshProUGUI nameText;
+    private TextMeshProUGUI countText; // 右下角数量
 
     #endregion
 
@@ -42,6 +43,8 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
         CacheUIReferences();
         //缓存星级子物体
         CacheStarChildren();
+        //确保数量文本存在(预制体没有就运行时创建)
+        EnsureCountText();
         //初始化隐藏动画和删除标记
         if (selectAnimator != null)
         {
@@ -109,6 +112,23 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
     }
 
     /// <summary>
+    /// 确保数量文本存在: 预制体有 Top/Count 就用它, 没有就在图标右下角创建一个
+    /// </summary>
+    private void EnsureCountText()
+    {
+        var countTrans = transform.Find("Bottom/CountText");
+        if (countTrans != null)
+        {
+            countText = countTrans.GetComponent<TextMeshProUGUI>();
+        }
+
+        if (countText != null)
+        {
+            countText.gameObject.SetActive(false); // 默认隐藏, Refresh时按物品类型显示
+        }
+    }
+
+    /// <summary>
     /// 缓存星星子物体
     /// </summary>
     private void CacheStarChildren()
@@ -168,6 +188,24 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
         if (nameText != null)
         {
             nameText.text = InventoryManager.INSTANCE.GetItemName(itemData.itemID);
+        }
+        //数量显示(食物/素材有数量, 武器没有)
+        if (countText != null)
+        {
+            if (itemData is FoodItem food)
+            {
+                countText.gameObject.SetActive(true);
+                countText.text = food.count.ToString();
+            }
+            else if (itemData is MaterialItem material)
+            {
+                countText.gameObject.SetActive(true);
+                countText.text = material.count.ToString();
+            }
+            else
+            {
+                countText.gameObject.SetActive(false);
+            }
         }
         RefreshStars();
     }
@@ -249,6 +287,7 @@ public class PackageCell : MonoBehaviour, IPointerClickHandler, IPointerEnterHan
     }
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (uiParent == null) return; // 安全: 没绑定背包面板的格子不响应点击
         if (uiParent.currentMode == PackageMode.delete)
         {
             uiParent.AddChooseDeleteUid(itemData.instanceID);

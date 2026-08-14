@@ -263,6 +263,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
 
         #region 血条相关
         currentHealth -= bullet.damage * damageMultiplier;
+        DamageNumberUI.Instance.Show(transform.position + Vector3.up * 1.8f, Mathf.RoundToInt(bullet.damage * damageMultiplier));
         if (currentHealth > 0)
         {
             healthBarShow_timer = 0;

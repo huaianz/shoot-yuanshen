@@ -117,3 +117,12 @@ public enum QuestType
     Kill,    // 消灭指定类型的敌人
     Collect  // 收集指定物品
 }
+
+/// <summary>
+/// 食物回血方式
+/// </summary>
+public enum FoodHealType
+{
+    Instant,  // 一次性立即回血
+    OverTime  // 一段时间内每隔几秒回一次
+}

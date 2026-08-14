@@ -101,6 +101,16 @@ public static class EventHandler
     }
     #endregion
 
+    #region 玩家弹药事件
+    /// <summary>
+    /// 玩家弹药变化事件(角色ID, 当前弹匣, 弹匣容量, 是否换弹中)
+    /// </summary>
+    public static event Action<int, int, int, bool> AmmoChangedEvent;
+    public static void CallAmmoChangedEvent(int roleID, int currentAmmo, int magazineSize, bool isReloading)
+    {
+        AmmoChangedEvent?.Invoke(roleID, currentAmmo, magazineSize, isReloading);
+    }
+    #endregion
 
     #region UI状态事件
     /// <summary>

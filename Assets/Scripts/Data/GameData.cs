@@ -62,12 +62,17 @@ public class Food
 {
     public int foodID;
     public string foodName;
-    public int healAmount;//回复生命值
+    [Header("回血方式")]
+    public FoodHealType healType = FoodHealType.Instant;
+    [Header("回血量(立即回血=总血量; 间断回血=每次回血量)")]
+    public int healAmount;
+    [Header("间断回血总时长(秒)")]
+    public float overTimeDuration = 0f;
+    [Header("每次回血间隔(秒)")]
+    public float tickInterval = 0f;
     public int maxStack = 99;
     public string description;
     public string iconPath;
-
-
 }
 
 /// <summary>

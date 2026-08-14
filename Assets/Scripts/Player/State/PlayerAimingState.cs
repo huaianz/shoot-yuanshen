@@ -27,6 +27,7 @@ public class PlayerAimingState : PlayerStateBase
         playerModel.PlayStateAnimation("Aiming");
         if (IsBeControl())
         {
+            playerModel.weapon.RefreshWeaponData();
             UpdateAimingTarget();
             playerController.EnterAim();
         }

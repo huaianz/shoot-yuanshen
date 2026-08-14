@@ -411,6 +411,37 @@ public class GameManager : SingleMonoBase<GameManager>
     }
 
     /// <summary>
+    /// 当前上阵角色回复生命(不超出上限)
+    /// </summary>
+    public void HealActiveRole(float amount)
+    {
+        if (_currentActiveRoleID < 0) return;
+        var data = GetRoleData(_currentActiveRoleID);
+        if (data == null || data.currentHealth <= 0f) return;
+        data.currentHealth = Mathf.Min(data.finalMaxHealth, data.currentHealth + amount);
+        EventHandler.CallPlayerHealthChangedEvent(data.roleID, data.currentHealth, data.finalMaxHealth);
+    }
+
+    /// <summary>
+    /// 间断回血: 持续 duration 秒, 每隔 tickInterval 秒回复 tickAmount
+    /// </summary>
+    public void HealActiveRoleOverTime(float duration, float tickInterval, float tickAmount)
+    {
+        StartCoroutine(HealOverTimeRoutine(duration, tickInterval, tickAmount));
+    }
+
+    private IEnumerator HealOverTimeRoutine(float duration, float tickInterval, float tickAmount)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            yield return new WaitForSeconds(tickInterval);
+            elapsed += tickInterval;
+            HealActiveRole(tickAmount);
+        }
+    }
+
+    /// <summary>
     /// 死亡处理: 等1.5秒 -> 卸载战斗场景 -> 传回安全区 -> 回满血 -> 提示
     /// </summary>
     private IEnumerator HandlePlayerDeath(RoleRuntimeData data)

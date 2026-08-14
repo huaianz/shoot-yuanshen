@@ -97,6 +97,12 @@ public class PlayerController : SingleMonoBase<PlayerController>
         isAiming = input.Player.IsAiming.IsPressed();
         isJumping = input.Player.IsJumping.triggered;
         isFire = input.Player.Fire.IsPressed();
+        // R键手动换弹
+        if (UnityEngine.InputSystem.Keyboard.current != null
+            && UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame)
+        {
+            currentPlayerModel?.weapon.TryReload();
+        }
         #endregion
 
         #region 计算玩家移动方向
