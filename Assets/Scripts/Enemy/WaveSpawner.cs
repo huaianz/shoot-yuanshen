@@ -19,6 +19,10 @@ public class WaveSpawner : MonoBehaviour
     [Header("进图后多久开始刷第一波")]
     public float startDelay = 10f;
 
+    [Header("刷怪点附近寻找NavMesh的半径(米)")]
+    [Tooltip("刷怪点稍微悬空也能落回地面, 避免一个敌人都生成不了")]
+    public float navSearchRadius = 10f;
+
     // 当前是第几波(从0开始, 显示时+1)
     private int _currentWaveIndex = -1;
     // 本波已经生成、还没被销毁的敌人
@@ -91,7 +95,7 @@ public class WaveSpawner : MonoBehaviour
                 Vector3 offset = new Vector3(Random.Range(-1.5f, 1.5f), 0f, Random.Range(-1.5f, 1.5f));
 
                 //只在地面上的有效导航点生成
-                if (NavMesh.SamplePosition(point.position + offset, out NavMeshHit hit, 3f, NavMesh.AllAreas))
+                if (NavMesh.SamplePosition(point.position + offset, out NavMeshHit hit, navSearchRadius, NavMesh.AllAreas))
                 {
                     GameObject enemy = Instantiate(group.enemyPrefab, hit.position, point.rotation);
                     _aliveEnemies.Add(enemy); // 记入存活列表

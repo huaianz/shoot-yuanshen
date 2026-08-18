@@ -81,6 +81,7 @@ public class LoginUI : MonoBehaviour
     private readonly List<Vector2> _meteorVels = new List<Vector2>();
     private readonly Color _titleBase = new Color(1f, 0.85f, 0.45f);
 
+    private GameClient _client;
     private void Awake()
     {
         if (!_built)
@@ -92,16 +93,20 @@ public class LoginUI : MonoBehaviour
 
     private void OnEnable()
     {
-        GameClient.Instance.OnLoginResult += OnLoginResult;
-        GameClient.Instance.OnRegisterResult += OnRegisterResult;
+        _client = GameClient.Instance; // 正常启动时创建/获取一次
+        _client.OnLoginResult += OnLoginResult;
+        _client.OnRegisterResult += OnRegisterResult;
         // 云存档管理器在登录阶段就要存在(负责下载/上传)
         _ = CloudSaveManager.Instance;
     }
-
     private void OnDisable()
     {
-        GameClient.Instance.OnLoginResult -= OnLoginResult;
-        GameClient.Instance.OnRegisterResult -= OnRegisterResult;
+        // 只在实例还存在时取消订阅; 不访问 Instance getter, 避免销毁阶段重新创建
+        if (_client != null)
+        {
+            _client.OnLoginResult -= OnLoginResult;
+            _client.OnRegisterResult -= OnRegisterResult;
+        }
     }
 
     public static LoginUI CreateNew()

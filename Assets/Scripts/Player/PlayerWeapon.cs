@@ -58,6 +58,11 @@ public class PlayerWeapon : MonoBehaviour
     //弹匣容量
     public int magazineSize;
     public bool isReloading;
+    //枪械模型
+    private GameObject _currentGun;   // 当前生成的枪(换枪时销毁旧的)
+    public Transform leftHandTarget;  // 左手目标
+    //右手挂载武器的父物体位置
+    public Transform rightHand;
 
     private float lastFireTime;
     private int _bulletDamage = 10;
@@ -103,11 +108,45 @@ public class PlayerWeapon : MonoBehaviour
 
         var item = InventoryManager.INSTANCE.weaponData?.GetWeaponByID(weaponItem.itemID);
         if (item == null) return;
-
+        //换枪，生成对应模型并且设置左手扶枪位置
+        UpdateWeaponModel(item);
+        // 切换对应的子弹/火花预制体(只在武器变化时执行)
+        if (bulletPool != null)
+        {
+            bulletPool.SetupWeapon(item.bulletPrefab, item.sparkPrefab);
+        }
         magazineSize = Mathf.Max(1, item.BulletNum);   // 弹匣容量 = 武器数据里的 BulletNum
         _bulletDamage = Mathf.Max(1, item.weaponATK);  // 伤害 = 武器攻击力
         currentAmmo = magazineSize;
         NotifyAmmoChanged();
+    }
+
+    /// <summary>
+    /// 换枪: 在右手骨 DEF-hand.R 下生成对应模型, 并设置左手扶枪位置
+    /// </summary>
+    private void UpdateWeaponModel(Weapon template)
+    {
+        // 删除上一把枪
+        if (_currentGun != null)
+        {
+            Destroy(_currentGun);
+            _currentGun = null;
+        }
+        if (template == null || template.weaponModel == null) return;
+
+        // 生成新枪, 用武器数据里的 Transform 组件数值
+        _currentGun = Instantiate(template.weaponModel, rightHand);
+        _currentGun.transform.localPosition = template.weaponPosition;
+        _currentGun.transform.localRotation = Quaternion.Euler(template.weaponRotation);
+        _currentGun.transform.localScale = template.weaponScale;
+
+        // 左手扶住枪管: 把 Left Hand Target 移到数据里的位置
+        if (leftHandTarget != null)
+        {
+            leftHandTarget.localPosition = template.LeftPosition;
+            leftHandTarget.localRotation = Quaternion.Euler(template.LeftRotation);
+            leftHandTarget.localScale = template.LeftScale;
+        }
     }
 
     public void Fire(Vector3 targetPos)

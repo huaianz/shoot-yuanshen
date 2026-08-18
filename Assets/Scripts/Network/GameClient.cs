@@ -185,7 +185,6 @@ public class GameClient : MonoBehaviour
                 HandlePlayerDataResponse(json);
                 break;
             case MsgSavePlayerData:
-                HandlePlayerDataResponse(json);
                 break;
 
         }

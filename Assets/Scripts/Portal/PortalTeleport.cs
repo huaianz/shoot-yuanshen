@@ -102,7 +102,11 @@ public class PortalTeleport : MonoBehaviour
                 }
                 agent.enabled = true;
                 agent.Warp(model.transform.position);
-                agent.isStopped = false;
+                // 只有确实在 NavMesh 上才恢复移动, 避免 Resume 报错
+                if (agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                }
             }
         }
 

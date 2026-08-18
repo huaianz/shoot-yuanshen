@@ -123,4 +123,50 @@ public class BulletPool : MonoBehaviour
             _sparks.Enqueue(spark);
         }
     }
+
+    #region 换武器重建池
+    /// <summary>
+    /// 切换武器时调用,换子弹/火花预制体, 并重建池
+    /// </summary>
+    public void SetupWeapon(PlayerWeaponBullet bullet, GameObject spark)
+    {
+        if (bullet != null) bulletPrefab = bullet;
+        if (spark != null) sparkPrefab = spark;
+        RebuildPool();
+    }
+
+    /// <summary>
+    /// 清掉旧池, 用新预制体重建
+    /// </summary>
+    private void RebuildPool()
+    {
+        // 清掉旧池里的子弹/火花
+        while (_bullets.Count > 0)
+        {
+            PlayerWeaponBullet b = _bullets.Dequeue();
+            if (b != null) Destroy(b.gameObject);
+        }
+        while (_sparks.Count > 0)
+        {
+            GameObject s = _sparks.Dequeue();
+            if (s != null) Destroy(s.gameObject);
+        }
+
+        // 用新预制体重建
+        if (bulletPrefab == null || sparkPrefab == null) return;
+        for (int i = 0; i < prewarmBullets; i++)
+        {
+            var bullet = Instantiate(bulletPrefab, _container);
+            bullet.pool = this;
+            bullet.gameObject.SetActive(false);
+            _bullets.Enqueue(bullet);
+        }
+        for (int i = 0; i < prewarmSparks; i++)
+        {
+            var spark = Instantiate(sparkPrefab, _container);
+            spark.SetActive(false);
+            _sparks.Enqueue(spark);
+        }
+    }
+    #endregion
 }

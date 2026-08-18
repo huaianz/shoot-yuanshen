@@ -36,6 +36,8 @@ public class GameManager : SingleMonoBase<GameManager>
     {
         //初始化角色系统
         InitRoles();
+        // 演示: 登录后给背包补全每种武器各一把, 方便测试
+        // InventoryManager.INSTANCE.EnsureAllWeaponsInBag();
         //记录安全区复活点
         if (PlayerController.INSTANCE != null && PlayerController.INSTANCE.currentPlayerModel != null)
         {

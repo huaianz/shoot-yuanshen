@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 
 /// <summary>
@@ -51,7 +52,23 @@ public class Weapon
     public string weaponDescription;
     [Header("武器物品图片路径")]
     public string iconPath;
-
+    [Header("武器模型")]
+    public GameObject weaponModel;
+    [Header("武器Transform组件")]
+    public Vector3 weaponPosition;
+    public Vector3 weaponRotation;
+    public Vector3 weaponScale;
+    [Header("左手扶住枪管位置")]
+    public Vector3 LeftPosition;
+    public Vector3 LeftRotation;
+    public Vector3 LeftScale;
+    [Header("右手握枪位置")]
+    public Vector3 RightPosition;
+    public Vector3 RightRotation;
+    public Vector3 RightScale;
+    [Header("子弹和火花预制体")]
+    public PlayerWeaponBullet bulletPrefab;
+    public GameObject sparkPrefab;
 }
 
 /// <summary>

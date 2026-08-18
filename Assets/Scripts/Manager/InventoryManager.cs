@@ -711,6 +711,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                     break;
             }
         }
+
     }
 
     /// <summary>
@@ -1100,6 +1101,36 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     public class SaveData1
     {
         public List<SerializableItem> items = new List<SerializableItem>();
+    }
+    #endregion
+
+    #region 往背包添加所有武器的临时测试方法
+    /// <summary>
+    /// 确保背包里每种武器各有一把(缺什么补什么, 不会重复添加)
+    /// </summary>
+    public void EnsureAllWeaponsInBag()
+    {
+        if (weaponData == null || weaponData.weaponList == null) return;
+        foreach (var weapon in weaponData.weaponList)
+        {
+            if (HasWeaponItem(weapon.weaponID)) continue; // 已有就不重复加
+            AddWeapon(weapon.weaponID);
+        }
+    }
+
+    /// <summary>
+    /// 背包里是否已有这种武器
+    /// </summary>
+    private bool HasWeaponItem(int itemID)
+    {
+        foreach (var id in _weaponIds)
+        {
+            if (_allItems.TryGetValue(id, out var item) && item is WeaponItem w && w.itemID == itemID)
+            {
+                return true;
+            }
+        }
+        return false;
     }
     #endregion
 }

@@ -108,7 +108,10 @@ public class CloudSaveManager : MonoBehaviour
 
         _dirty = false;
         _timer = 0f;
-        ToastUI.ShowMessage($"云存档同步完成（金币 {_pendingCoin.Value}）", new Color(0.4f, 1f, 0.5f));
+        // 演示: 导入后补武器, 并重新标记脏, 确保5秒后会上传到服务器
+        // InventoryManager.INSTANCE.EnsureAllWeaponsInBag();
+        // _dirty = true;
+        // ToastUI.ShowMessage($"云存档同步完成（金币 {_pendingCoin.Value}）", new Color(0.4f, 1f, 0.5f));
 
         _pendingCoin = null;
         _pendingInventory = null;
