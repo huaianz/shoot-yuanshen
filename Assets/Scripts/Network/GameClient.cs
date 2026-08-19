@@ -161,10 +161,10 @@ public class GameClient : MonoBehaviour
         var dto = new GetPlayerDataRequestDto { token = Token };
         _ = SendAsync(MsgGetPlayerData, JsonUtility.ToJson(dto));
     }
-    public void SavePlayerData(int coin, string inventoryJson)
+    public void SavePlayerData(int coin, string inventoryJson, string roleDataJson)
     {
         if (!IsLoggedIn) return;
-        var dto = new SavePlayerDataRequestDto { token = Token, coin = coin, inventoryJson = inventoryJson };
+        var dto = new SavePlayerDataRequestDto { token = Token, coin = coin, inventoryJson = inventoryJson, roleDataJson = roleDataJson };
         _ = SendAsync(MsgSavePlayerData, JsonUtility.ToJson(dto));
     }
     #endregion
@@ -222,7 +222,8 @@ public class GameClient : MonoBehaviour
             success = resp.code == 0,
             msg = resp.msg,
             coin = resp.coin,
-            inventoryJson = resp.inventoryJson
+            inventoryJson = resp.inventoryJson,
+            roleDataJson = resp.roleDataJson   //把角色数据传给上层
         });
     }
     #endregion

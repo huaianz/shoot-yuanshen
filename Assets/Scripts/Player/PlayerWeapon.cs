@@ -68,6 +68,8 @@ public class PlayerWeapon : MonoBehaviour
     private int _bulletDamage = 10;
     private int _lastRoleID = -1;
     private int _lastWeaponID = -1;
+    //当前武器的专属枪声
+    private AudioClip _currentGunshot;
 
     private void Awake()
     {
@@ -110,6 +112,7 @@ public class PlayerWeapon : MonoBehaviour
         if (item == null) return;
         //换枪，生成对应模型并且设置左手扶枪位置
         UpdateWeaponModel(item);
+        _currentGunshot = item.gunshotClip;   // 缓存本武器的枪声
         // 切换对应的子弹/火花预制体(只在武器变化时执行)
         if (bulletPool != null)
         {
@@ -156,10 +159,15 @@ public class PlayerWeapon : MonoBehaviour
         {
             return;
         }
-        //打空自动换弹
+        //空仓: 响空枪声, 不自动换弹(按 R 手动换弹)
         if (currentAmmo <= 0)
         {
-            TryReload();
+            // 加节流, 按住开火不会每秒响几十次咔哒
+            if (Time.time - lastFireTime >= bulletInterval)
+            {
+                lastFireTime = Time.time;
+                AudioManager.INSTANCE.PlaySFX("Audio/SFX/Empty", 0.7f);
+            }
             return;
         }
         if (Time.time - lastFireTime < bulletInterval)
@@ -190,11 +198,12 @@ public class PlayerWeapon : MonoBehaviour
                 bullet.damage = _bulletDamage; // 伤害跟随武器攻击力
             }
             bulletPool.SpawnSpark(origin, direction);
-        }
 
-        if (currentAmmo <= 0)
-        {
-            TryReload();
+            // 枪声: 武器有专属枪声就用, 没有则用默认
+            if (_currentGunshot != null)
+                AudioManager.INSTANCE.PlaySFX(_currentGunshot, 0.5f);
+            else
+                AudioManager.INSTANCE.PlaySFX("Audio/SFX/Gunshot", 0.5f);
         }
     }
 
@@ -206,6 +215,7 @@ public class PlayerWeapon : MonoBehaviour
         if (isReloading) return;
         if (magazineSize <= 0 || currentAmmo >= magazineSize) return;
         isReloading = true;
+        AudioManager.INSTANCE.PlaySFX("Audio/SFX/Reload", 0.8f);  // 换弹音效
         NotifyAmmoChanged(); // 进入换弹状态(显示"装填中...")
         StartCoroutine(ReloadRoutine());
     }

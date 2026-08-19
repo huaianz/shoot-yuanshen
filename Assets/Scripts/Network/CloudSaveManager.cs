@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -34,11 +35,14 @@ public class CloudSaveManager : MonoBehaviour
     // 待应用的数据(登录时下载, 等游戏场景就绪)
     private int? _pendingCoin;
     private string _pendingInventory;
+    private string _pendingRoleData;   // 新增: 待应用的角色等级经验
 
     private void OnEnable()
     {
         EventHandler.CurrencyUpdateEvent += OnCurrencyChanged;
         EventHandler.InventoryChangedEvent += OnInventoryChanged;
+        EventHandler.ExpChangedEvent += OnExpChanged;      // 新增: 经验变化 -> 打脏
+        EventHandler.RoleLevelUpEvent += OnLevelUp;        // 新增: 升级 -> 打脏
         GameClient.Instance.OnLoginResult += OnLoginResult;
         GameClient.Instance.OnPlayerDataResult += OnPlayerDataResult;
     }
@@ -47,6 +51,8 @@ public class CloudSaveManager : MonoBehaviour
     {
         EventHandler.CurrencyUpdateEvent -= OnCurrencyChanged;
         EventHandler.InventoryChangedEvent -= OnInventoryChanged;
+        EventHandler.ExpChangedEvent -= OnExpChanged;
+        EventHandler.RoleLevelUpEvent -= OnLevelUp;
         GameClient.Instance.OnLoginResult -= OnLoginResult;
         GameClient.Instance.OnPlayerDataResult -= OnPlayerDataResult;
     }
@@ -78,6 +84,10 @@ public class CloudSaveManager : MonoBehaviour
         _dirty = true;
     }
 
+    private void OnExpChanged(int roleID, int curExp, int expToNext) => _dirty = true;
+
+    private void OnLevelUp(int roleID, int newLevel) => _dirty = true;
+
     private void OnLoginResult(LoginResult r)
     {
         if (!r.success) return;
@@ -92,19 +102,21 @@ public class CloudSaveManager : MonoBehaviour
         // 先缓存, 等游戏场景加载后再套用
         _pendingCoin = r.coin;
         _pendingInventory = r.inventoryJson;
+        _pendingRoleData = r.roleDataJson;   // 新增
         TryApplyPending();
     }
 
     /// <summary>
-    /// 应用下载的数据(ShopManager/InventoryManager 存在时才执行)
+    /// 应用下载的数据(三个管理器都存在时才执行, 防止游戏还没初始化)
     /// </summary>
     private void TryApplyPending()
     {
         if (!_pendingCoin.HasValue) return;
-        if (ShopManager.INSTANCE == null || InventoryManager.INSTANCE == null) return;
+        if (ShopManager.INSTANCE == null || InventoryManager.INSTANCE == null || GameManager.INSTANCE == null) return;
 
         ShopManager.INSTANCE.SetCurrency("Coin", _pendingCoin.Value);
         InventoryManager.INSTANCE.ImportFromCloudJson(_pendingInventory);
+        ImportRoleDataJson(_pendingRoleData);   // 新增: 应用角色等级经验
 
         _dirty = false;
         _timer = 0f;
@@ -115,6 +127,38 @@ public class CloudSaveManager : MonoBehaviour
 
         _pendingCoin = null;
         _pendingInventory = null;
+        _pendingRoleData = null;   // 新增
+    }
+
+    /// <summary>
+    /// 把下载的角色数据写进运行时, 并刷新属性/血条/经验条
+    /// </summary>
+    private void ImportRoleDataJson(string json)
+    {
+        if (string.IsNullOrEmpty(json)) return;
+        RoleSaveList list = JsonUtility.FromJson<RoleSaveList>(json);
+        if (list == null || list.roles == null) return;
+
+        foreach (var entry in list.roles)
+        {
+            var role = GameManager.INSTANCE.GetRoleData(entry.roleID);
+            if (role == null) continue;
+
+            role.roleLevel = Mathf.Max(1, entry.level);   // 覆盖为存档等级
+            role.roleExp = Mathf.Max(0, entry.exp);       // 覆盖为存档经验
+
+            // 等级变化 -> 重算属性, 并刷新血条上限
+            GameManager.INSTANCE.MarkRoleStatsDirty(role.roleID);
+            GameManager.INSTANCE.RefreshRoleStats(role.roleID);
+            EventHandler.CallPlayerHealthChangedEvent(role.roleID, role.currentHealth, role.finalMaxHealth);
+        }
+
+        // 刷新当前角色的经验条
+        var active = GameManager.INSTANCE.GetRoleData(GameManager.INSTANCE.GetActiveRoleID());
+        if (active != null)
+        {
+            EventHandler.CallExpChangedEvent(active.roleID, active.roleExp, GameManager.INSTANCE.GetExpToNextLevel(active.roleLevel));
+        }
     }
 
     private void Upload()
@@ -123,6 +167,43 @@ public class CloudSaveManager : MonoBehaviour
 
         int coin = ShopManager.INSTANCE.GetCurrency("Coin");
         string inventoryJson = InventoryManager.INSTANCE.ExportToCloudJson();
-        GameClient.Instance.SavePlayerData(coin, inventoryJson);
+        string roleDataJson = ExportRoleDataJson();   // 新增
+        GameClient.Instance.SavePlayerData(coin, inventoryJson, roleDataJson);
     }
+
+    /// <summary>外部主动触发保存(返回主菜单/退出游戏前调用, 让脏数据马上上传)</summary>
+    public void UploadNow()
+    {
+        _timer = saveInterval;   // 下次 Update 立即达到节流时间 -> 触发上传
+    }
+
+
+    /// <summary>
+    /// 把所有角色的等级/经验序列化成 JSON
+    /// </summary>
+    private string ExportRoleDataJson()
+    {
+        var list = new RoleSaveList();
+        foreach (var role in GameManager.INSTANCE.GetAllRoles())
+        {
+            list.roles.Add(new RoleSaveEntry { roleID = role.roleID, level = role.roleLevel, exp = role.roleExp });
+        }
+        return JsonUtility.ToJson(list);
+    }
+}
+
+/// <summary>角色存档条目</summary>
+[System.Serializable]
+public class RoleSaveEntry
+{
+    public int roleID;
+    public int level;
+    public int exp;
+}
+
+/// <summary>角色存档列表(JsonUtility 不支持直接序列化 List, 需要包装类)</summary>
+[System.Serializable]
+public class RoleSaveList
+{
+    public List<RoleSaveEntry> roles = new List<RoleSaveEntry>();
 }

@@ -13,6 +13,8 @@ public class GameHUDUI : MonoBehaviour
     private CharacterPanelUI _characterPanel;
     private Button _packageBtn;
     private Button _characterBtn;
+    private Button _settingsBtn;
+    private SettingsPanelUI _settingsPanel;
 
     private void Awake()
     {
@@ -22,12 +24,13 @@ public class GameHUDUI : MonoBehaviour
 
         _packagePanel = transform.root.GetComponentInChildren<PackagePanel>(true);
         _characterPanel = transform.root.GetComponentInChildren<CharacterPanelUI>(true);
-
+        _settingsPanel = transform.root.GetComponentInChildren<SettingsPanelUI>(true);
         Transform uiIcon = transform.Find("GameplayHUD/UIicon");
         if (uiIcon != null)
         {
             _packageBtn = uiIcon.Find("PackageBtn")?.GetComponent<Button>();
             _characterBtn = uiIcon.Find("CharacterBtn")?.GetComponent<Button>();
+            _settingsBtn = uiIcon.Find("SettingsBtn")?.GetComponent<Button>();
         }
     }
 
@@ -44,6 +47,11 @@ public class GameHUDUI : MonoBehaviour
         {
             _characterBtn.onClick.RemoveAllListeners();
             _characterBtn.onClick.AddListener(OnClickCharacter);
+        }
+        if (_settingsBtn != null)
+        {
+            _settingsBtn.onClick.RemoveAllListeners();
+            _settingsBtn.onClick.AddListener(OnClickSettings);
         }
     }
 
@@ -87,5 +95,9 @@ public class GameHUDUI : MonoBehaviour
         {
             _characterPanel.OpenPanel();
         }
+    }
+    private void OnClickSettings()
+    {
+        if (_settingsPanel != null) _settingsPanel.OpenPanel();
     }
 }

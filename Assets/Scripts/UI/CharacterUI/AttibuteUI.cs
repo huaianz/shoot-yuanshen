@@ -56,7 +56,7 @@ public class AttibuteUI : MonoBehaviour
         }
         if (CharacterLevel != null)
         {
-            CharacterLevel.text = $"等级 {baseData.characterLevel}/90";
+            CharacterLevel.text = $"等级 {roleData.roleLevel}/90";
         }
         if (Hp != null)
         {

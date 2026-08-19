@@ -69,6 +69,8 @@ public class Weapon
     [Header("子弹和火花预制体")]
     public PlayerWeaponBullet bulletPrefab;
     public GameObject sparkPrefab;
+    [Header("枪声")]
+    public AudioClip gunshotClip;
 }
 
 /// <summary>
@@ -145,6 +147,8 @@ public class RoleRuntimeData
 
     public bool isDirty = true;
     public string equippedWeaponId;
+    public int roleLevel;   // 运行时等级(升级后存这里, 不直接改配置)
+    public int roleExp;     // 当前经验
 
     public RoleRuntimeData(Character character)
     {
@@ -153,6 +157,8 @@ public class RoleRuntimeData
         currentHealth = character.characterHP;
         currentArmor = character.characterDEF;
         currentStamina = 100f;
+        roleLevel = Mathf.Max(1, character.characterLevel);  // 初始等级取配置
+        roleExp = Mathf.Max(0, character.characterExp);      // 初始经验取配置
         isDirty = true;
     }
 }

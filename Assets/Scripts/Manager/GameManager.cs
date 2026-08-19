@@ -355,7 +355,7 @@ public class GameManager : SingleMonoBase<GameManager>
         {
             weapon = InventoryManager.INSTANCE.GetItem(weaponId) as WeaponItem;
         }
-        var (attack, defense, moveSpeed, maxHealth, maxArmor) = RoleStatsCalculator.CalculateFinalStats(data.baseData, weapon);
+        var (attack, defense, moveSpeed, maxHealth, maxArmor) = RoleStatsCalculator.CalculateFinalStats(data.baseData, data.roleLevel, weapon);
         data.finalAttack = attack;
         data.finalDefense = defense;
         data.finalMoveSpeed = moveSpeed;
@@ -383,6 +383,45 @@ public class GameManager : SingleMonoBase<GameManager>
             _avatarCache[characterID] = loaded;
         }
         return loaded;
+    }
+
+    /// <summary>升到下一级需要多少经验(每级线性增长: 100, 150, 200...)</summary>
+    public int GetExpToNextLevel(int level)
+    {
+        return 100 + (level - 1) * 50;
+    }
+
+    /// <summary>
+    /// 给当前上阵角色加经验, 经验满自动升级
+    /// </summary>
+    public void AddExpToActiveRole(int exp)
+    {
+        if (exp <= 0) return;
+        RoleRuntimeData role = GetRoleData(GetActiveRoleID());
+        if (role == null) return;
+
+        role.roleExp += exp;
+
+        // 可能一口气升好几级, 用 while 循环扣
+        bool leveledUp = false;
+        while (role.roleExp >= GetExpToNextLevel(role.roleLevel))
+        {
+            role.roleExp -= GetExpToNextLevel(role.roleLevel);
+            role.roleLevel++;
+            leveledUp = true;
+        }
+
+        if (leveledUp)
+        {
+            RefreshRoleStats(role.roleID);           // 先按新等级重算属性
+            role.currentHealth = role.finalMaxHealth; // 升级回满血(新血量立即生效)
+            ToastUI.ShowMessage($"✨ {role.baseData.characterName} 升级到 {role.roleLevel} 级!",
+                new Color(1f, 0.85f, 0.3f));         // 金色升级提示
+            EventHandler.CallRoleLevelUpEvent(role.roleID, role.roleLevel);
+        }
+
+        // 广播经验变化(以后经验条 UI 监听这个)
+        EventHandler.CallExpChangedEvent(role.roleID, role.roleExp, GetExpToNextLevel(role.roleLevel));
     }
     #endregion
     /// <summary>

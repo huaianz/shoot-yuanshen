@@ -27,4 +27,5 @@ public class PlayerDataResult
     public string msg;
     public int coin;
     public string inventoryJson;
+    public string roleDataJson;   //服务器返回的角色数据
 }

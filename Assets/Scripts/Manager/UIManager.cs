@@ -29,6 +29,25 @@ public class UIManager : SingleMonoBase<UIManager>
     //当前打开的界面数量
     private static int _uiBlockCount = 0;
 
+    protected override void Awake()
+    {
+        base.Awake();
+        // 场景切换后静态计数可能残留(比如开着设置面板时直接回主菜单)
+        // 这里统一重置, 保证每个新场景从"没有UI打开"开始
+        ResetUIState();
+    }
+
+    /// <summary>
+    /// 重置UI状态(回主菜单/切场景前调用, 或新场景 Awake 时统一调用)
+    /// </summary>
+    public static void ResetUIState()
+    {
+        _uiBlockCount = 0;
+        IsAnyUIOpen = false;
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+        EventHandler.CallUIStateChangedEvent(false);
+    }
     #region 界面的打开与关闭
     /// <summary>
     /// 打开界面

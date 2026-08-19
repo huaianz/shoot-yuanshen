@@ -16,6 +16,6 @@ public class RegisterResponseDto { public int code; public string msg; public st
 [Serializable]
 public class GetPlayerDataRequestDto { public string token; }
 [Serializable]
-public class PlayerDataResponseDto { public int code; public string msg; public string username; public int coin; public string inventoryJson; }
+public class PlayerDataResponseDto { public int code; public string msg; public string username; public int coin; public string inventoryJson; public string roleDataJson; }
 [Serializable]
-public class SavePlayerDataRequestDto { public string token; public int coin; public string inventoryJson; }
+public class SavePlayerDataRequestDto { public string token; public int coin; public string inventoryJson; public string roleDataJson; }

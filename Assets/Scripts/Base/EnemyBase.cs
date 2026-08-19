@@ -81,6 +81,9 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     public string enemyType = "Hilichurl";
     private bool lootDropped;
     #endregion
+    [Header("击杀经验")]
+    [Tooltip("被玩家击杀后获得的经验")]
+    public int expReward = 10;
 
     private string _lastPlayedAnim = "";
     [Tooltip("移动动画名")]
@@ -256,6 +259,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         //生成喷血特效
         Destroy(Instantiate(bloodSmashPrefab, bullet.transform.position, rotation), 3);
         #endregion
+        AudioManager.INSTANCE.PlaySFX("Audio/SFX/Hit", 0.8f);
 
         #region 生成流血滴落特效
         Destroy(Instantiate(bloodDrippingPrefab, transform.position + Vector3.up * 0.1f, Quaternion.Euler(0, 0, 0)), 3);
@@ -279,6 +283,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
             currentHealth = 0;
             isDead = true;
             Destroy(healthBar);//销毁血条
+            GameManager.INSTANCE.AddExpToActiveRole(expReward);  // 玩家击杀 -> 给当前角色加经验
             DropLoot();
         }
         #endregion

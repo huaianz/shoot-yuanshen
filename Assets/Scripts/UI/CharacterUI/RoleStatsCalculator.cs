@@ -1,8 +1,9 @@
 public static class RoleStatsCalculator
 {
     public static (float attack, float defense, float moveSpeed, float maxHealth, float maxArmor)
-        CalculateFinalStats(Character character, WeaponItem weapon)
+        CalculateFinalStats(Character character, int level, WeaponItem weapon)
     {
+        float levelBonus = 1f + (level - 1) * 0.1f;
         float attack = character.characterATK;
         float defense = character.characterDEF;
         float moveSpeed = 5f;

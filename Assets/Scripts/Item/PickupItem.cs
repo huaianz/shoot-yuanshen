@@ -137,7 +137,7 @@ public class PickupItem : MonoBehaviour
         EventHandler.CallItemCollectedEvent(itemID, amount);
 
         ToastUI.ShowMessage(message, color);
-
+        AudioManager.INSTANCE.PlaySFX("Audio/SFX/Pickup", 0.9f);
         Destroy(gameObject);
     }
 

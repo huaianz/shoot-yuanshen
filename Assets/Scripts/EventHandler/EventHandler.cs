@@ -161,6 +161,24 @@ public static class EventHandler
         InventoryChangedEvent?.Invoke();
     }
     #endregion
+
+    /// <summary>
+    /// 经验变化(角色ID, 当前经验, 升下一级所需经验)
+    /// </summary>
+    public static event Action<int, int, int> ExpChangedEvent;
+    public static void CallExpChangedEvent(int roleID, int curExp, int expToNext)
+    {
+        ExpChangedEvent?.Invoke(roleID, curExp, expToNext);
+    }
+
+    /// <summary>
+    /// 角色升级(角色ID, 新等级)
+    /// </summary>
+    public static event Action<int, int> RoleLevelUpEvent;
+    public static void CallRoleLevelUpEvent(int roleID, int newLevel)
+    {
+        RoleLevelUpEvent?.Invoke(roleID, newLevel);
+    }
 }
 
 

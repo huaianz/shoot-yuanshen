@@ -8,14 +8,20 @@ using UnityEngine;
 public class SingleMonoBase<T> : MonoBehaviour where T :SingleMonoBase<T>
 {
     public static T INSTANCE;
-    protected virtual void Awake(){
-        if(INSTANCE!=null){
-            Debug.LogError(name+"不符合单例模式");
+
+    protected virtual void Awake()
+    {
+        if (INSTANCE != null && INSTANCE != this)
+        {
+            // 重复实例(比如误挂了两份): 自动销毁自己, 保留第一个, 不再报错
+            Destroy(gameObject);
+            return;
         }
-        INSTANCE =(T)this;
+        INSTANCE = (T)this;
     }
 
-    protected virtual void OnDestroy(){
-        INSTANCE=null;
-    }    
+    protected virtual void OnDestroy()
+    {
+        INSTANCE = null;
+    }
 }
