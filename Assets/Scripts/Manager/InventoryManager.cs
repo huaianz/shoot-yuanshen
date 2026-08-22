@@ -660,6 +660,15 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                 data.items.Add(new CloudItemData { type = "Material", itemID = m.itemID, count = m.count });
         }
 
+        // 装备信息: type="Equip", itemID=武器ID, count=角色ID (记住玩家自选的武器)
+        foreach (var kv in _roleWeapon)
+        {
+            if (_allItems.TryGetValue(kv.Value, out var it) && it is WeaponItem w)
+            {
+                data.items.Add(new CloudItemData { type = "Equip", itemID = w.itemID, count = kv.Key });
+            }
+        }
+
         return JsonUtility.ToJson(data);
     }
 
@@ -712,6 +721,32 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             }
         }
 
+        // 恢复装备状态: 把存档里的"Equip"记录重新装备到对应角色
+        foreach (var item in data.items)
+        {
+            if (item.type != "Equip") continue;
+            string id = GetFirstWeaponInstanceID(item.itemID);
+            if (!string.IsNullOrEmpty(id))
+            {
+                EquipWeapon(id, item.count);
+            }
+        }
+
+    }
+
+    /// <summary>
+    /// 返回背包里该武器的第一个实例ID(没有返回null)
+    /// </summary>
+    public string GetFirstWeaponInstanceID(int itemID)
+    {
+        foreach (var id in _weaponIds)
+        {
+            if (_allItems.TryGetValue(id, out var item) && item is WeaponItem w && w.itemID == itemID)
+            {
+                return id;
+            }
+        }
+        return null;
     }
 
     /// <summary>
@@ -814,12 +849,9 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             }
         }
 
-        //对应路径能找到图片的话存入缓存
-        if (loaded != null)
-        {
-            _iconCache[itemID] = loaded;
-        }
-        else
+        // 无论成功失败都缓存, 避免重复加载/刷屏(失败只在第一次警告)
+        _iconCache[itemID] = loaded;
+        if (loaded == null)
         {
             Debug.LogWarning($"找不到物品{itemID}的图标");
         }
@@ -859,55 +891,65 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     private async void SaveData()
     {
         if (!_isDirty || _isSaving) return;
-        _isDirty = false;
         _isSaving = true;
 
-        // 构建可序列化的数据
-        SaveData1 saveData = new SaveData1();
-        foreach (var kvp in _allItems)
+        try
         {
-            var item = kvp.Value;
-            SerializableItem serializable = new SerializableItem
+            // 构建可序列化的数据
+            SaveData1 saveData = new SaveData1();
+            foreach (var kvp in _allItems)
             {
-                instanceID = item.instanceID,
-                templateID = item.itemID,
-                isNew = item.isNew,
-                ownerID = item.ownerID,
-            };
+                var item = kvp.Value;
+                SerializableItem serializable = new SerializableItem
+                {
+                    instanceID = item.instanceID,
+                    templateID = item.itemID,
+                    isNew = item.isNew,
+                    ownerID = item.ownerID,
+                };
 
-            if (item is WeaponItem)
-            {
-                serializable.type = "Weapon";
-                serializable.count = 0;
+                if (item is WeaponItem)
+                {
+                    serializable.type = "Weapon";
+                    serializable.count = 0;
+                }
+                else if (item is FoodItem food)
+                {
+                    serializable.type = "Food";
+                    serializable.count = food.count;
+                }
+                else if (item is MaterialItem material)
+                {
+                    serializable.type = "Material";
+                    serializable.count = material.count;
+                }
+                saveData.items.Add(serializable);
             }
-            else if (item is FoodItem food)
+
+            // 序列化为 JSON
+            string json = JsonUtility.ToJson(saveData, true);
+            byte[] data = System.Text.Encoding.UTF8.GetBytes(json);
+
+            await Task.Run(() =>
             {
-                serializable.type = "Food";
-                serializable.count = food.count;
-            }
-            else if (item is MaterialItem material)
-            {
-                serializable.type = "Material";
-                serializable.count = material.count;
-            }
-            saveData.items.Add(serializable);
+                using (var fs = new FileStream(_savePath, FileMode.Create))
+                {
+                    fs.Write(data, 0, data.Length);
+                }
+            });
+
+            _isDirty = false;   // 写盘成功才清除脏标记
         }
-
-        // 序列化为 JSON
-        string json = JsonUtility.ToJson(saveData, true);
-        byte[] data = System.Text.Encoding.UTF8.GetBytes(json);
-
-        await Task.Run(() =>
+        catch (Exception e)
         {
-            using (var fs = new FileStream(_savePath, FileMode.Create))
-            {
-                fs.Write(data, 0, data.Length);
-            }
-        });
-
-        _isSaving = false;
+            // 写盘失败: 保留脏标记, 5秒后自动重试
+            Debug.LogError($"[存档] 写盘失败: {e.Message}");
+        }
+        finally
+        {
+            _isSaving = false;   // 无论成败都解锁, 防止永久卡住存档
+        }
     }
-
     private void LoadData()
     {
         if (!File.Exists(_savePath)) return;

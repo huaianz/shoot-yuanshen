@@ -35,16 +35,17 @@ public class CloudSaveManager : MonoBehaviour
     // 待应用的数据(登录时下载, 等游戏场景就绪)
     private int? _pendingCoin;
     private string _pendingInventory;
-    private string _pendingRoleData;   // 新增: 待应用的角色等级经验
-
+    private string _pendingRoleData;   //待应用的角色等级经验
+    private string _pendingQuestData;
     private void OnEnable()
     {
         EventHandler.CurrencyUpdateEvent += OnCurrencyChanged;
         EventHandler.InventoryChangedEvent += OnInventoryChanged;
-        EventHandler.ExpChangedEvent += OnExpChanged;      // 新增: 经验变化 -> 打脏
-        EventHandler.RoleLevelUpEvent += OnLevelUp;        // 新增: 升级 -> 打脏
+        EventHandler.ExpChangedEvent += OnExpChanged;      // 经验变化 -> 打脏
+        EventHandler.RoleLevelUpEvent += OnLevelUp;        // 升级 -> 打脏
         GameClient.Instance.OnLoginResult += OnLoginResult;
         GameClient.Instance.OnPlayerDataResult += OnPlayerDataResult;
+        QuestManager.QuestUpdatedEvent += OnQuestUpdated;
     }
 
     private void OnDisable()
@@ -55,6 +56,7 @@ public class CloudSaveManager : MonoBehaviour
         EventHandler.RoleLevelUpEvent -= OnLevelUp;
         GameClient.Instance.OnLoginResult -= OnLoginResult;
         GameClient.Instance.OnPlayerDataResult -= OnPlayerDataResult;
+        QuestManager.QuestUpdatedEvent -= OnQuestUpdated;
     }
 
     private void Update()
@@ -103,6 +105,7 @@ public class CloudSaveManager : MonoBehaviour
         _pendingCoin = r.coin;
         _pendingInventory = r.inventoryJson;
         _pendingRoleData = r.roleDataJson;   // 新增
+        _pendingQuestData = r.questDataJson;
         TryApplyPending();
     }
 
@@ -112,14 +115,18 @@ public class CloudSaveManager : MonoBehaviour
     private void TryApplyPending()
     {
         if (!_pendingCoin.HasValue) return;
-        if (ShopManager.INSTANCE == null || InventoryManager.INSTANCE == null || GameManager.INSTANCE == null) return;
-
+        if (ShopManager.INSTANCE == null || InventoryManager.INSTANCE == null
+    || GameManager.INSTANCE == null || QuestManager.INSTANCE == null) return;
         ShopManager.INSTANCE.SetCurrency("Coin", _pendingCoin.Value);
         InventoryManager.INSTANCE.ImportFromCloudJson(_pendingInventory);
         ImportRoleDataJson(_pendingRoleData);   // 新增: 应用角色等级经验
-
+        ImportQuestDataJson(_pendingQuestData);
         _dirty = false;
         _timer = 0f;
+
+        // 登录后确保角色初始装备武器: 新号自动给"异世·星辉之铳"并装备;
+        // 云导入可能清空了装备状态, 所以导入完再补一次(已有装备的老玩家不会重复给)
+        GameManager.INSTANCE.GiveStarterWeapon();
         // 演示: 导入后补武器, 并重新标记脏, 确保5秒后会上传到服务器
         // InventoryManager.INSTANCE.EnsureAllWeaponsInBag();
         // _dirty = true;
@@ -127,7 +134,8 @@ public class CloudSaveManager : MonoBehaviour
 
         _pendingCoin = null;
         _pendingInventory = null;
-        _pendingRoleData = null;   // 新增
+        _pendingRoleData = null;
+        _pendingQuestData = null;
     }
 
     /// <summary>
@@ -168,7 +176,8 @@ public class CloudSaveManager : MonoBehaviour
         int coin = ShopManager.INSTANCE.GetCurrency("Coin");
         string inventoryJson = InventoryManager.INSTANCE.ExportToCloudJson();
         string roleDataJson = ExportRoleDataJson();   // 新增
-        GameClient.Instance.SavePlayerData(coin, inventoryJson, roleDataJson);
+        string questDataJson = ExportQuestDataJson();
+        GameClient.Instance.SavePlayerData(coin, inventoryJson, roleDataJson, questDataJson);
     }
 
     /// <summary>外部主动触发保存(返回主菜单/退出游戏前调用, 让脏数据马上上传)</summary>
@@ -189,6 +198,25 @@ public class CloudSaveManager : MonoBehaviour
             list.roles.Add(new RoleSaveEntry { roleID = role.roleID, level = role.roleLevel, exp = role.roleExp });
         }
         return JsonUtility.ToJson(list);
+    }
+    private void OnQuestUpdated() => _dirty = true;
+
+    /// <summary>导出当前委托状态</summary>
+    private string ExportQuestDataJson()
+    {
+        if (QuestManager.INSTANCE == null) return "{}";
+        return JsonUtility.ToJson(QuestManager.INSTANCE.ExportQuestState());
+    }
+
+    /// <summary>恢复委托状态</summary>
+    private void ImportQuestDataJson(string json)
+    {
+        if (string.IsNullOrEmpty(json)) return;
+        QuestSaveData data = JsonUtility.FromJson<QuestSaveData>(json);
+        if (QuestManager.INSTANCE != null)
+        {
+            QuestManager.INSTANCE.ImportQuestState(data);
+        }
     }
 }
 

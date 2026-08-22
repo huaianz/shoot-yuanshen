@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -32,10 +32,76 @@ public class GameManager : SingleMonoBase<GameManager>
     private bool _sortedDirty = true;
     #endregion
 
+    #region 体力相关
+    [Tooltip("体力上限")]
+    public float maxStamina = 100f;
+    [Tooltip("闪避一次消耗体力")]
+    public float dodgeStaminaCost = 20f;
+    [HideInInspector]
+    public float currentStamina = 100f;
+
+    /// <summary>当前体力是否为空</summary>
+    public bool IsStaminaEmpty => currentStamina <= 0f;
+
+    /// <summary>持续消耗体力(跑步/攀爬用), 扣到0为止; 返回是否还有体力</summary>
+    public bool ConsumeStamina(float amount)
+    {
+        if (currentStamina <= 0f) return false;
+        currentStamina = Mathf.Max(0f, currentStamina - amount);
+        EventHandler.CallPlayerStaminaChangedEvent(currentStamina, maxStamina);
+        return currentStamina > 0f;
+    }
+
+    /// <summary>一次性消耗体力(闪避用), 不足则不扣并返回false</summary>
+    public bool TryConsumeStamina(float amount)
+    {
+        if (currentStamina < amount) return false;
+        currentStamina -= amount;
+        EventHandler.CallPlayerStaminaChangedEvent(currentStamina, maxStamina);
+        return true;
+    }
+
+    /// <summary>恢复体力(不超出上限)</summary>
+    public void RecoverStamina(float amount)
+    {
+        if (currentStamina >= maxStamina) return;
+        currentStamina = Mathf.Min(maxStamina, currentStamina + amount);
+        EventHandler.CallPlayerStaminaChangedEvent(currentStamina, maxStamina);
+    }
+
+    /// <summary>
+    /// 间断回体力: 持续 duration 秒, 每隔 tickInterval 秒恢复 tickAmount
+    /// </summary>
+    public void RecoverStaminaOverTime(float duration, float tickInterval, float tickAmount)
+    {
+        StartCoroutine(RecoverStaminaOverTimeRoutine(duration, tickInterval, tickAmount));
+    }
+
+    private IEnumerator RecoverStaminaOverTimeRoutine(float duration, float tickInterval, float tickAmount)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            yield return new WaitForSeconds(tickInterval);
+            elapsed += tickInterval;
+            RecoverStamina(tickAmount);   // 自动封顶到体力上限
+        }
+    }
+
+    /// <summary>按等级刷新体力上限: 每级+10, 并回满体力</summary>
+    public void RefreshMaxStamina(int level)
+    {
+        maxStamina = 100f + (level - 1) * 10f;
+        currentStamina = maxStamina;//升级/换人回满体力
+        EventHandler.CallPlayerStaminaChangedEvent(currentStamina, maxStamina);
+    }
+    #endregion
+
     private void Start()
     {
         //初始化角色系统
         InitRoles();
+        GiveStarterWeapon();   // 初始武器: 星辉之铳
         // 演示: 登录后给背包补全每种武器各一把, 方便测试
         // InventoryManager.INSTANCE.EnsureAllWeaponsInBag();
         //记录安全区复活点
@@ -49,7 +115,8 @@ public class GameManager : SingleMonoBase<GameManager>
         // 预热三个自动创建的 UI(懒加载单例, 需要第一次调用才会创建)
         _ = LowHealthUI.Instance;                 // 残血红闪
         _ = QuestTrackerUI.Instance;              // 委托追踪
-        _ = RegionBannerUI.Instance;              // 地区提示        _ = CloudSaveManager.Instance;
+        _ = RegionBannerUI.Instance;              // 地区提示
+        _ = CloudSaveManager.Instance;            // 云存档(登录流程也会创建, 这里提前确保存在)
         RegionBannerUI.ShowRegion("安全区");      // 开局先显示一次地区
 
     }
@@ -285,6 +352,41 @@ public class GameManager : SingleMonoBase<GameManager>
     }
 
     /// <summary>
+    /// 初始武器: 新玩家给一把"异世·星辉之铳"并装备到当前角色
+    /// (已经装备武器的老玩家/存档玩家不会重复给)
+    /// </summary>
+    public void GiveStarterWeapon()
+    {
+        int activeRoleID = GetActiveRoleID();
+        if (activeRoleID < 0) return;
+
+        // 当前角色已经装备武器就不再给(老玩家/存档玩家)
+        if (!string.IsNullOrEmpty(InventoryManager.INSTANCE.GetRoleWeaponId(activeRoleID))) return;
+
+        // 按名字找武器, 不硬编码ID(配置表ID变了也不怕)
+        var weapon = InventoryManager.INSTANCE.weaponData?.weaponList?.Find(w => w.weaponName == "异世·星辉之铳");
+        if (weapon == null) return;
+
+        // 背包里没有就先加一把
+        string instanceID = InventoryManager.INSTANCE.GetFirstWeaponInstanceID(weapon.weaponID);
+        if (string.IsNullOrEmpty(instanceID))
+        {
+            InventoryManager.INSTANCE.AddWeapon(weapon.weaponID);
+            instanceID = InventoryManager.INSTANCE.GetFirstWeaponInstanceID(weapon.weaponID);
+        }
+        if (string.IsNullOrEmpty(instanceID)) return;
+
+        // 装备到当前角色
+        InventoryManager.INSTANCE.EquipWeapon(instanceID, activeRoleID);
+
+        // 立即刷新玩家手上的武器(防止显示 0/0)
+        if (PlayerController.INSTANCE != null && PlayerController.INSTANCE.currentPlayerModel != null
+            && PlayerController.INSTANCE.currentPlayerModel.weapon != null)
+        {
+            PlayerController.INSTANCE.currentPlayerModel.weapon.RefreshWeaponData();
+        }
+    }
+    /// <summary>
     /// 设置当前上阵角色
     /// </summary>
     /// <param name="roleID"></param>
@@ -296,6 +398,9 @@ public class GameManager : SingleMonoBase<GameManager>
         }
         _currentActiveRoleID = roleID;
         MarkRoleStatsDirty(roleID);
+        //体力上限跟随当前角色的等级
+        var staminaRole = GetRoleData(roleID);
+        if (staminaRole != null) RefreshMaxStamina(staminaRole.roleLevel);
         OnActiveRoleChanged?.Invoke(roleID);
     }
 
@@ -375,12 +480,14 @@ public class GameManager : SingleMonoBase<GameManager>
         var role = GetRoleData(characterID);
         if (role == null || string.IsNullOrEmpty(role.baseData.avatarPath))
         {
+            _avatarCache[characterID] = null;   // 失败也缓存, 避免重复查找
             return null;
         }
         Sprite loaded = Resources.Load<Sprite>(role.baseData.avatarPath);
-        if (loaded != null)
+        _avatarCache[characterID] = loaded;     // 无论成功失败都缓存
+        if (loaded == null)
         {
-            _avatarCache[characterID] = loaded;
+            Debug.LogWarning($"找不到角色{characterID}的头像: {role.baseData.avatarPath}");
         }
         return loaded;
     }
@@ -414,6 +521,7 @@ public class GameManager : SingleMonoBase<GameManager>
         if (leveledUp)
         {
             RefreshRoleStats(role.roleID);           // 先按新等级重算属性
+            RefreshMaxStamina(role.roleLevel);       // 升级增加体力上限并回满
             role.currentHealth = role.finalMaxHealth; // 升级回满血(新血量立即生效)
             ToastUI.ShowMessage($"✨ {role.baseData.characterName} 升级到 {role.roleLevel} 级!",
                 new Color(1f, 0.85f, 0.3f));         // 金色升级提示
@@ -424,12 +532,27 @@ public class GameManager : SingleMonoBase<GameManager>
         EventHandler.CallExpChangedEvent(role.roleID, role.roleExp, GetExpToNextLevel(role.roleLevel));
     }
     #endregion
+    #region 无敌帧相关
+    private float _invincibleUntil = -1f;//无敌截止时间(Time.time)
+
+    /// <summary>当前上阵角色是否处于无敌状态</summary>
+    public bool IsActiveRoleInvincible => Time.time < _invincibleUntil;
+
+    /// <summary>开启无敌, 持续 duration 秒(多次调用取更晚的结束时间)</summary>
+    public void SetActiveRoleInvincible(float duration)
+    {
+        _invincibleUntil = Mathf.Max(_invincibleUntil, Time.time + duration);
+    }
+    #endregion
+
     /// <summary>
     /// 对当前上阵角色造成伤害
     /// </summary>
     /// <param name="damage"></param>
     public void ApplyDamageToActiveRole(float damage)
     {
+        //无敌帧: 闪避期间不受伤
+        if (IsActiveRoleInvincible) return;
         if (_currentActiveRoleID < 0)
         {
             return;
@@ -488,6 +611,9 @@ public class GameManager : SingleMonoBase<GameManager>
     private IEnumerator HandlePlayerDeath(RoleRuntimeData data)
     {
         yield return new WaitForSeconds(1.5f);
+
+        // 死亡回城也是地图切换: 播放加载视频
+        LoadingVideoUI.Instance.Show();
 
         //卸载战斗场景
         if (!string.IsNullOrEmpty(combatSceneName))
@@ -552,5 +678,8 @@ public class GameManager : SingleMonoBase<GameManager>
         RegionBannerUI.ShowRegion("安全区");
         //提示
         ToastUI.ShowMessage("你阵亡了，已返回安全区休整", new Color(1f, 0.5f, 0.3f));
+
+        // 回城完成, 关闭加载视频
+        LoadingVideoUI.Instance.Hide();
     }
 }

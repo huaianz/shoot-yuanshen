@@ -161,8 +161,6 @@ public class ChaseAction : BTNode
         _enemy.currentPhase = EnemyPhase.Combat;
         _enemy.navMeshAgent.isStopped = false;
         _enemy.navMeshAgent.speed = _enemy.stats.chaseSpeed;
-        _enemy.PlayAnimationOnce(_enemy.walkAnimName);
-        _enemy.SetMoveSpeed(1f);
 
         if (Time.time >= _nextSetTime)
         {
@@ -171,6 +169,18 @@ public class ChaseAction : BTNode
         }
 
         FaceTarget(_enemy, target.transform.position);
+
+        // 看 agent 实际有没有在动: 没动就播待机(到点/卡住/追不到都不再原地跑)
+        if (_enemy.navMeshAgent.velocity.sqrMagnitude > 0.01f)
+        {
+            _enemy.PlayAnimationOnce(_enemy.walkAnimName);
+            _enemy.SetMoveSpeed(1f);
+        }
+        else
+        {
+            _enemy.PlayAnimationOnce(_enemy.idleAnimName);
+            _enemy.SetMoveSpeed(0f);
+        }
         return NodeState.Running;
     }
 

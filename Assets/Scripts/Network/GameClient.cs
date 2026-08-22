@@ -51,6 +51,10 @@ public class GameClient : MonoBehaviour
     private NetworkStream _stream;
     private bool _connected;
 
+    [Header("心跳间隔(秒): 让服务器及时发现掉线连接")]
+    public float heartbeatInterval = 10f;
+    private float _heartbeatTimer;
+
     // 线程安全队列: 收消息线程往这放, 主线程每帧取
     private readonly ConcurrentQueue<Action> _inbox = new ConcurrentQueue<Action>();
 
@@ -70,6 +74,17 @@ public class GameClient : MonoBehaviour
         {
             try { act(); }
             catch (Exception ex) { Debug.LogError($"[网络] 处理消息异常: {ex}"); }
+        }
+
+        // 心跳: 每隔一段时间发一条, 让服务器能及时发现掉线连接
+        if (_connected)
+        {
+            _heartbeatTimer += Time.deltaTime;
+            if (_heartbeatTimer >= heartbeatInterval)
+            {
+                _heartbeatTimer = 0f;
+                _ = SendAsync(MsgHeartbeat, "{}");
+            }
         }
     }
 
@@ -93,6 +108,7 @@ public class GameClient : MonoBehaviour
             await _client.ConnectAsync(serverIP, serverPort);
             _stream = _client.GetStream();
             _connected = true;
+            _heartbeatTimer = 0f;   // 心跳计时从连接成功后重新开始
             Debug.Log($"[网络] 已连接 {serverIP}:{serverPort}");
             _ = ReceiveLoopAsync();
             onResult?.Invoke(true);
@@ -161,10 +177,17 @@ public class GameClient : MonoBehaviour
         var dto = new GetPlayerDataRequestDto { token = Token };
         _ = SendAsync(MsgGetPlayerData, JsonUtility.ToJson(dto));
     }
-    public void SavePlayerData(int coin, string inventoryJson, string roleDataJson)
+    public void SavePlayerData(int coin, string inventoryJson, string roleDataJson, string questDataJson)
     {
         if (!IsLoggedIn) return;
-        var dto = new SavePlayerDataRequestDto { token = Token, coin = coin, inventoryJson = inventoryJson, roleDataJson = roleDataJson };
+        var dto = new SavePlayerDataRequestDto
+        {
+            token = Token,
+            coin = coin,
+            inventoryJson = inventoryJson,
+            roleDataJson = roleDataJson,
+            questDataJson = questDataJson
+        };
         _ = SendAsync(MsgSavePlayerData, JsonUtility.ToJson(dto));
     }
     #endregion
@@ -223,7 +246,8 @@ public class GameClient : MonoBehaviour
             msg = resp.msg,
             coin = resp.coin,
             inventoryJson = resp.inventoryJson,
-            roleDataJson = resp.roleDataJson   //把角色数据传给上层
+            roleDataJson = resp.roleDataJson,   //把角色数据传给上层
+            questDataJson = resp.questDataJson
         });
     }
     #endregion

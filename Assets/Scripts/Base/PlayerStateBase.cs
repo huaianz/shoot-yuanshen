@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
@@ -53,6 +53,14 @@ public class PlayerStateBase : StateBase
 
         #endregion
 
+        #region 体力恢复
+        //在地面且没有移动输入时恢复体力(奔跑/攀爬都会消耗体力)
+        if (playerModel.cc.isGrounded && playerController.moveIput.magnitude <= 0.01f)
+        {
+            GameManager.INSTANCE?.RecoverStamina(10f * Time.deltaTime);
+        }
+        #endregion
+
     }
 
     /// <summary>
@@ -73,5 +81,22 @@ public class PlayerStateBase : StateBase
         playerModel.verticalSpeed = Mathf.Sqrt(-2 * playerModel.gravity * playerModel.jumpHeight);
         //切换到悬空状态
         playerModel.SwitchState(PlayerState.Hover);
+    }
+
+    /// <summary>
+    /// 检测面前是否是可攀爬的墙: 站在地面、距离够近、墙至少0.8米高
+    /// </summary>
+    public bool IsClimbableWall()
+    {
+        //1. 必须站在地面才能爬
+        if (!playerModel.cc.isGrounded) return false;
+
+        //2. 胸口高度向前要有墙(距离1.5米内)
+        Vector3 chest = playerModel.transform.position + Vector3.up * 1.0f;
+        if (!Physics.Raycast(chest, playerModel.transform.forward, out _, 1.5f)) return false;
+
+        //3. 墙至少0.8米高: 0.8米高度也要能碰到墙(矮台阶直接跳过去, 不让爬)
+        Vector3 low = playerModel.transform.position + Vector3.up * 0.8f;
+        return Physics.Raycast(low, playerModel.transform.forward, 1.5f);
     }
 }

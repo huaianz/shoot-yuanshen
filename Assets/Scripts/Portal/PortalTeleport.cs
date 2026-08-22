@@ -14,6 +14,9 @@ public class PortalTeleport : MonoBehaviour
     [Header("出口物体的名字(要在目标场景里)")]
     public string exitObjectName = "PortalExit_Map";
 
+    [Header("返回后要播放的BGM(Resources路径, 留空不切歌)" )]
+    public string returnBGM = "";
+
     [Header("传送冷却时间(秒)")]
     public float cooldown = 1f;
 
@@ -29,6 +32,9 @@ public class PortalTeleport : MonoBehaviour
 
     private IEnumerator TeleportRoutine()
     {
+        // 地图切换: 全屏播放加载视频(Resources/Video/loading.mp4)
+        LoadingVideoUI.Instance.Show();
+
         //加载目标场景
         if (!string.IsNullOrEmpty(targetScene))
         {
@@ -43,7 +49,11 @@ public class PortalTeleport : MonoBehaviour
         //找到玩家根物体和出口
         PlayerController player = FindObjectOfType<PlayerController>();
         GameObject exit = GameObject.Find(exitObjectName);
-        if (player == null || exit == null) yield break;
+        if (player == null || exit == null)
+        {
+            LoadingVideoUI.Instance.Hide();   // 传送失败也要关掉加载视频
+            yield break;
+        }
 
         Vector3 targetPos = exit.transform.position;
         Quaternion targetRot = exit.transform.rotation;
@@ -73,7 +83,16 @@ public class PortalTeleport : MonoBehaviour
             yield return null;
             Scene oldScene = SceneManager.GetSceneByName(unloadScene);
             if (oldScene.isLoaded) SceneManager.UnloadSceneAsync(oldScene);
+
+            // 返回传送门: 附加加载不会触发 sceneLoaded, 手动切回BGM
+            if (!string.IsNullOrEmpty(returnBGM) && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayBGM(returnBGM, AudioManager.Instance.BGMVolume, 1f);
+            }
         }
+
+        // 地图切换完成, 关闭加载视频
+        LoadingVideoUI.Instance.Hide();
     }
 
     /// <summary>

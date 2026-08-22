@@ -126,3 +126,13 @@ public enum FoodHealType
     Instant,  // 一次性立即回血
     OverTime  // 一段时间内每隔几秒回一次
 }
+
+/// <summary>
+/// 食物回体力方式
+/// </summary>
+public enum FoodStaminaType
+{
+    None,     // 不回体力(纯回血食物用这个)
+    Instant,  // 一次性立即回体力
+    OverTime  // 一段时间内每隔几秒回一次
+}

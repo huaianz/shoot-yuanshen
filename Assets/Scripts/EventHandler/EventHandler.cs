@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
@@ -90,6 +90,17 @@ public static class EventHandler
     {
         PlayerHealthChangedEvent?.Invoke(roleID, currentHealth, maxHealth);
     }
+
+    #region 玩家体力事件
+    /// <summary>
+    /// 玩家体力变化事件(世界空间体力条监听)
+    /// </summary>
+    public static event Action<float, float> PlayerStaminaChangedEvent;
+    public static void CallPlayerStaminaChangedEvent(float currentStamina, float maxStamina)
+    {
+        PlayerStaminaChangedEvent?.Invoke(currentStamina, maxStamina);
+    }
+    #endregion
 
     /// <summary>
     /// 玩家死亡事件

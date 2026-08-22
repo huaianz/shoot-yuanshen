@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -27,6 +27,26 @@ public class PlayerIdleState : PlayerStateBase
             if (playerController.isJumping)
                 SwithToHover();
             #endregion
+
+            //闪避监听(需要消耗体力, 体力不足无法闪避)
+            if (playerController.isDodge && GameManager.INSTANCE != null &&
+                GameManager.INSTANCE.TryConsumeStamina(GameManager.INSTANCE.dodgeStaminaCost))
+            {
+                playerModel.SwitchState(PlayerState.Dodge);
+                return;
+            }
+            //攀爬监听: 按E且面前有墙
+            if (playerController.isClimb && IsClimbableWall())
+            {
+                playerModel.SwitchState(PlayerState.Climb);
+                return;
+            }
+            //下蹲监听
+            if (playerController.isCrouch)
+            {
+                playerModel.SwitchState(PlayerState.Crouch);
+                return;
+            }
         }
         //人机模式
         else

@@ -93,6 +93,28 @@ public class RegionBannerUI : MonoBehaviour
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
+    private void OnEnable()
+    {
+        EventHandler.UIStateChangedEvent += OnUIStateChanged;
+    }
+
+    private void OnDisable()
+    {
+        EventHandler.UIStateChangedEvent -= OnUIStateChanged;
+    }
+
+    // 打开其他界面时立即隐藏地区提示, 避免盖在面板上
+    private void OnUIStateChanged(bool isUIOpen)
+    {
+        if (!isUIOpen) return;
+        if (_coroutine != null)
+        {
+            StopCoroutine(_coroutine);
+            _coroutine = null;
+        }
+        if (_canvasGroup != null) _canvasGroup.alpha = 0f;
+    }
+
     private void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;

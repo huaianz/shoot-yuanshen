@@ -76,8 +76,8 @@ public class SettingsPanelUI : MonoBehaviour
         if (gameObject.activeSelf) return;   // 防止重复打开导致计数错乱
 
         // 打开时用当前设置刷新 UI，保证显示的是真实状态
-        if (bgmSlider != null) bgmSlider.value = AudioManager.INSTANCE.BGMVolume;
-        if (bgmToggle != null) bgmToggle.isOn = AudioManager.INSTANCE.BGMEnabled;
+        if (bgmSlider != null) bgmSlider.value = AudioManager.Instance.BGMVolume;
+        if (bgmToggle != null) bgmToggle.isOn = AudioManager.Instance.BGMEnabled;
         RefreshVolumeText();
 
         gameObject.SetActive(true);
@@ -118,20 +118,20 @@ public class SettingsPanelUI : MonoBehaviour
 
     private void OnVolumeChanged(float v)
     {
-        AudioManager.INSTANCE.SetBGMVolume(v);
+        AudioManager.Instance.SetBGMVolume(v);
         RefreshVolumeText();
     }
 
     private void OnToggleChanged(bool on)
     {
-        AudioManager.INSTANCE.SetBGMEnabled(on);
+        AudioManager.Instance.SetBGMEnabled(on);
     }
 
     private void RefreshVolumeText()
     {
         if (volumeText != null)
         {
-            volumeText.text = Mathf.RoundToInt(AudioManager.INSTANCE.BGMVolume * 100) + "%";
+            volumeText.text = Mathf.RoundToInt(AudioManager.Instance.BGMVolume * 100) + "%";
         }
     }
 }

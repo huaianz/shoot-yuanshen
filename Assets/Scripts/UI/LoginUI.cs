@@ -507,6 +507,9 @@ public class LoginUI : MonoBehaviour
         }
         if (_connecting) return;
         _connecting = true;
+        // 提交后先停用输入框, 防止拖拽协程在界面切换时访问空引用
+        if (_usernameInput != null) _usernameInput.DeactivateInputField();
+        if (_passwordInput != null) _passwordInput.DeactivateInputField();
         if (_spinner != null) _spinner.GetComponent<Image>().enabled = true;
         SetStatus(isRegister ? "注册中..." : "连接服务器中...", Color.yellow);
 

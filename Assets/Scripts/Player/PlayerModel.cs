@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEditor.UIElements;
@@ -10,7 +10,11 @@ public enum PlayerState
     Idle,
     Move,
     Hover,
-    Aiming
+    Aiming,
+    Crouch,//下蹲
+    Dodge,//闪避
+    Climb,//攀爬
+    Slide//滑铲
 }
 /// <summary>
 /// 角色模型
@@ -45,6 +49,8 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     public float fallHeight = 0.2f;
     #endregion
 
+
+
     #region 玩家在地面时前三帧速度的缓存
     private static readonly int CACHE_SIZE = 3;
     Vector3[] speedCache = new Vector3[CACHE_SIZE];//动画前三帧的玩家速度
@@ -56,6 +62,13 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     [HideInInspector]
     public NavMeshAgent navMeshAgent;
     public float stoppingDistance = 2f;//停止跟随距离
+    #endregion
+    #region 体力条相关
+    [Tooltip("体力条预制体(世界空间, 参照怪物血条)")]
+    public GameObject staminaBarPrefab;
+    [Tooltip("体力条位置(角色头顶的挂点)")]
+    public Transform staminaBarPos;
+    private GameObject staminaBar;//实例化后的体力条
     #endregion
     private void Awake()
     {
@@ -71,13 +84,31 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     {
         SwitchState(PlayerState.Idle);
         ExitAim();
-
+        CreateStaminaBar();
     }
 
 
     void Update()
     {
+        //体力条跟随角色头顶
+        if (staminaBar != null && staminaBarPos != null)
+        {
+            staminaBar.transform.position = staminaBarPos.position;
+        }
+    }
 
+    /// <summary>
+    /// 实例化体力条(世界空间画布下, 跟随头顶)
+    /// </summary>
+    private void CreateStaminaBar()
+    {
+        if (staminaBarPrefab == null || staminaBarPos == null) return;
+        staminaBar = Instantiate(staminaBarPrefab, staminaBarPos.position, Quaternion.identity);
+        staminaBar.transform.SetParent(UIManager.INSTANCE.WorldSpaceCanvas.transform, true);
+        PlayerStaminaBarUI barUI = staminaBar.GetComponent<PlayerStaminaBarUI>();
+        if (barUI != null) barUI.Init(this);
+        //刷新一次初始显示(满体力时隐藏)
+        EventHandler.CallPlayerStaminaChangedEvent(GameManager.INSTANCE.currentStamina, GameManager.INSTANCE.maxStamina);
     }
 
 
@@ -116,6 +147,18 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
                 break;
             case PlayerState.Aiming:
                 stateMachine.EnterState<PlayerAimingState>();
+                break;
+            case PlayerState.Crouch:
+                stateMachine.EnterState<PlayerCrouchState>();
+                break;
+            case PlayerState.Dodge:
+                stateMachine.EnterState<PlayerDodgeState>();
+                break;
+            case PlayerState.Climb:
+                stateMachine.EnterState<PlayerClimbState>();
+                break;
+            case PlayerState.Slide:
+                stateMachine.EnterState<PlayerSlideState>();
                 break;
         }
         currentState = state;
@@ -209,4 +252,6 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     {
         return Vector3.Distance(transform.position, PlayerController.INSTANCE.currentPlayerModel.transform.position);
     }
+
+
 }

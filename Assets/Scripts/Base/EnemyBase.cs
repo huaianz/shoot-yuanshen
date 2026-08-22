@@ -53,6 +53,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     [Tooltip("血条框显示时间")]
     public float healthBarShowTime = 4f;
     private float healthBarShow_timer;
+    private bool _healthBarVisible;   // 血条当前是否显示(避免每帧重复SetActive)
     #endregion
 
     #region 攻击力
@@ -68,6 +69,8 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     [HideInInspector]
     public EnemyPerception perception;
     protected BTNode behaviorTree;
+    [Tooltip("勾上后不跑内部行为树, 改由图驱动")]
+    public bool useExternalBehaviorTree = false;
     protected Vector3 spawnPoint;
     public bool IsDead => isDead;
     public float HealthRatio => health > 0 ? currentHealth / health : 0f;
@@ -160,8 +163,8 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
 
     protected virtual void Update()
     {
-        //行为树驱动
-        if (behaviorTree != null)
+        //行为树驱动(勾了图驱动开关就跳过内部树)
+        if (behaviorTree != null && !useExternalBehaviorTree)
         {
             behaviorTree.Evaluate();
         }
@@ -173,12 +176,18 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         {
             if (healthBarShow_timer < healthBarShowTime)
             {
-                healthBar.SetActive(true);
+                // 只在状态变化时 SetActive 一次, 避免每帧重复调用
+                if (!_healthBarVisible)
+                {
+                    _healthBarVisible = true;
+                    healthBar.SetActive(true);
+                }
                 healthBar.transform.position = healthBarPos.position;
                 healthBarShow_timer += Time.deltaTime;
             }
-            else
+            else if (_healthBarVisible)
             {
+                _healthBarVisible = false;
                 healthBar.SetActive(false);
             }
         }
@@ -259,7 +268,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         //生成喷血特效
         Destroy(Instantiate(bloodSmashPrefab, bullet.transform.position, rotation), 3);
         #endregion
-        AudioManager.INSTANCE.PlaySFX("Audio/SFX/Hit", 0.8f);
+        AudioManager.Instance.PlaySFX("Audio/SFX/Hit", 0.8f);
 
         #region 生成流血滴落特效
         Destroy(Instantiate(bloodDrippingPrefab, transform.position + Vector3.up * 0.1f, Quaternion.Euler(0, 0, 0)), 3);

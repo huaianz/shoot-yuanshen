@@ -737,19 +737,36 @@ public class PackagePanel : BaseUIPanel
         Food food = InventoryManager.INSTANCE.foodData?.GetFoodByID(item.itemID);
         if (food == null) return;
 
-        // 应用回血效果
-        if (food.healType == FoodHealType.OverTime && food.tickInterval > 0f)
+        // 收集所有效果, 最后一起弹提示
+        List<string> effects = new List<string>();
+
+        // 应用回血效果(healAmount <= 0 表示纯体力食物, 不显示回血)
+        if (food.healType == FoodHealType.OverTime && food.tickInterval > 0f && food.healAmount > 0)
         {
             float duration = food.overTimeDuration > 0f ? food.overTimeDuration : 60f;
             GameManager.INSTANCE.HealActiveRoleOverTime(duration, food.tickInterval, food.healAmount);
-            int ticks = Mathf.CeilToInt(duration / food.tickInterval);
-            ToastUI.ShowMessage($"食用 {food.foodName}：{duration:F0} 秒内每 {food.tickInterval:F0} 秒恢复 {food.healAmount} 生命", new Color(0.4f, 1f, 0.5f));
+            effects.Add($"{duration:F0} 秒内每 {food.tickInterval:F0} 秒恢复 {food.healAmount} 生命");
         }
-        else
+        else if (food.healAmount > 0)
         {
             GameManager.INSTANCE.HealActiveRole(food.healAmount);
-            ToastUI.ShowMessage($"食用 {food.foodName}：恢复 {food.healAmount} 生命", new Color(0.4f, 1f, 0.5f));
+            effects.Add($"恢复 {food.healAmount} 生命");
         }
+
+        // 应用回体力效果(None 时不生效)
+        if (food.staminaType == FoodStaminaType.OverTime && food.staminaTickInterval > 0f && food.staminaAmount > 0)
+        {
+            float duration = food.staminaOverTimeDuration > 0f ? food.staminaOverTimeDuration : 60f;
+            GameManager.INSTANCE.RecoverStaminaOverTime(duration, food.staminaTickInterval, food.staminaAmount);
+            effects.Add($"{duration:F0} 秒内每 {food.staminaTickInterval:F0} 秒恢复 {food.staminaAmount} 体力");
+        }
+        else if (food.staminaType == FoodStaminaType.Instant && food.staminaAmount > 0)
+        {
+            GameManager.INSTANCE.RecoverStamina(food.staminaAmount);
+            effects.Add($"恢复 {food.staminaAmount} 体力");
+        }
+
+        ToastUI.ShowMessage($"食用 {food.foodName}：" + string.Join("，", effects), new Color(0.4f, 1f, 0.5f));
 
         // 消耗 1 个食物
         InventoryManager.INSTANCE.ConsumeFood(item.instanceID, 1);
@@ -787,15 +804,27 @@ public class PackagePanel : BaseUIPanel
     private string BuildFoodDescription(Food food)
     {
         string desc = string.IsNullOrEmpty(food.description) ? "" : food.description.Trim();
-        if (food.healType == FoodHealType.OverTime && food.tickInterval > 0f)
+        if (food.healType == FoodHealType.OverTime && food.tickInterval > 0f && food.healAmount > 0)
         {
             float duration = food.overTimeDuration > 0f ? food.overTimeDuration : 60f;
             desc += $"\n\n{duration:F0} 秒内每 {food.tickInterval:F0} 秒恢复 {food.healAmount} 点生命";
         }
-        else
+        else if (food.healAmount > 0)
         {
             desc += $"\n\n立即恢复 {food.healAmount} 点生命";
         }
+
+        // 追加回体力说明(None 时不追加)
+        if (food.staminaType == FoodStaminaType.OverTime && food.staminaTickInterval > 0f && food.staminaAmount > 0)
+        {
+            float duration = food.staminaOverTimeDuration > 0f ? food.staminaOverTimeDuration : 60f;
+            desc += $"\n\n{duration:F0} 秒内每 {food.staminaTickInterval:F0} 秒恢复 {food.staminaAmount} 点体力";
+        }
+        else if (food.staminaType == FoodStaminaType.Instant && food.staminaAmount > 0)
+        {
+            desc += $"\n\n立即恢复 {food.staminaAmount} 点体力";
+        }
+
         return desc;
     }
 

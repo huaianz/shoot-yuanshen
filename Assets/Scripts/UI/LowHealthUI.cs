@@ -38,6 +38,7 @@ public class LowHealthUI : MonoBehaviour
     private CanvasGroup _canvasGroup;   // 控制暗角整体强度
     private Coroutine _flashCoroutine;  // 闪烁协程
     private bool _lowHealth;            // 当前是否在残血状态
+    private bool _uiOpen;               // 是否有界面打开(打开时暂停红闪)
 
     /// <summary>
     /// 自动创建(跨场景保留)
@@ -123,15 +124,27 @@ public class LowHealthUI : MonoBehaviour
     private void OnEnable()
     {
         EventHandler.PlayerHealthChangedEvent += OnHealthChanged;
+        EventHandler.UIStateChangedEvent += OnUIStateChanged;
     }
 
     private void OnDisable()
     {
         EventHandler.PlayerHealthChangedEvent -= OnHealthChanged;
+        EventHandler.UIStateChangedEvent -= OnUIStateChanged;
         if (_flashCoroutine != null)
         {
             StopCoroutine(_flashCoroutine);
             _flashCoroutine = null;
+        }
+    }
+
+    // 打开其他界面时暂停红闪, 避免红边盖在面板上
+    private void OnUIStateChanged(bool isUIOpen)
+    {
+        _uiOpen = isUIOpen;
+        if (isUIOpen && _canvasGroup != null)
+        {
+            _canvasGroup.alpha = 0f;
         }
     }
 
@@ -179,7 +192,8 @@ public class LowHealthUI : MonoBehaviour
         while (true)
         {
             float p = Mathf.PingPong(Time.time / flashInterval, 1f);
-            _canvasGroup.alpha = Mathf.Lerp(minAlpha, maxAlpha, p);
+            // 有界面打开时不显示红闪(界面关闭后自动恢复)
+            _canvasGroup.alpha = _uiOpen ? 0f : Mathf.Lerp(minAlpha, maxAlpha, p);
             yield return null;
         }
     }

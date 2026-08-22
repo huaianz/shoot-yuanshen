@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Cinemachine;
 using UnityEngine;
@@ -28,6 +28,12 @@ public class PlayerController : SingleMonoBase<PlayerController>
     public bool isJumping;//跳跃输入
     [HideInInspector]
     public bool isFire;//射击输入
+    [HideInInspector]
+    public bool isCrouch;//下蹲输入(按住)
+    [HideInInspector]
+    public bool isDodge;//闪避输入(按下瞬间)
+    [HideInInspector]
+    public bool isClimb;//攀爬输入(按住)
     #endregion
 
     #region 瞄准相关
@@ -97,6 +103,9 @@ public class PlayerController : SingleMonoBase<PlayerController>
         isAiming = input.Player.IsAiming.IsPressed();
         isJumping = input.Player.IsJumping.triggered;
         isFire = input.Player.Fire.IsPressed();
+        isCrouch = input.Player.IsCrouch.IsPressed();
+        isDodge = input.Player.IsDodge.triggered;
+        isClimb = input.Player.IsClimb.IsPressed();
         // R键手动换弹
         if (UnityEngine.InputSystem.Keyboard.current != null
             && UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame)

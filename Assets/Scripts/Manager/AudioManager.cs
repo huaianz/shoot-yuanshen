@@ -22,6 +22,7 @@ public class AudioManager : SingleMonoBase<AudioManager>
     private AudioSource[] _sfxSources;                 // 音效播放器池
     private int _sfxIndex;                             // 当前轮到第几个
     private readonly Dictionary<string, AudioClip> _sfxCache = new();  // 音效缓存
+    private readonly Dictionary<string, AudioClip> _bgmCache = new();   // BGM缓存(切场景不重复加载)
 
     // 给 UI 读取的只读属性
     public float BGMVolume => bgmVolume;
@@ -30,6 +31,21 @@ public class AudioManager : SingleMonoBase<AudioManager>
     // 存档用的键名
     private const string KeyVolume = "BGM_Volume";
     private const string KeyEnabled = "BGM_Enabled";
+
+    /// <summary>
+    /// 安全获取实例: 场景里没有 AudioManager(比如直接在战斗场景按 Play 测试)就自动创建一个
+    /// </summary>
+    public static AudioManager Instance
+    {
+        get
+        {
+            if (INSTANCE == null)
+            {
+                new GameObject("AudioManager").AddComponent<AudioManager>();
+            }
+            return INSTANCE;
+        }
+    }
 
     protected override void Awake()
     {
@@ -102,11 +118,16 @@ public class AudioManager : SingleMonoBase<AudioManager>
     {
         if (clipPath == _currentClipName) return;
 
-        AudioClip clip = Resources.Load<AudioClip>(clipPath);
-        if (clip == null)
+        // BGM 也缓存, 切场景不重复加载
+        if (!_bgmCache.TryGetValue(clipPath, out AudioClip clip))
         {
-            Debug.LogWarning($"[AudioManager] 找不到BGM: {clipPath}");
-            return;
+            clip = Resources.Load<AudioClip>(clipPath);
+            if (clip == null)
+            {
+                Debug.LogWarning($"[AudioManager] 找不到BGM: {clipPath}");
+                return;
+            }
+            _bgmCache[clipPath] = clip;
         }
 
         StopAllCoroutines();

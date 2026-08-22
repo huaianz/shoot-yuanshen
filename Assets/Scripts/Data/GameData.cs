@@ -89,6 +89,14 @@ public class Food
     public float overTimeDuration = 0f;
     [Header("每次回血间隔(秒)")]
     public float tickInterval = 0f;
+    [Header("回体力方式")]
+    public FoodStaminaType staminaType = FoodStaminaType.None;
+    [Header("回体力值(立即回=总恢复量; 间断回=每次恢复量)")]
+    public int staminaAmount;
+    [Header("间断回体力总时长(秒)")]
+    public float staminaOverTimeDuration = 0f;
+    [Header("每次回体力间隔(秒)")]
+    public float staminaTickInterval = 0f;
     public int maxStack = 99;
     public string description;
     public string iconPath;
@@ -286,12 +294,12 @@ public class WaveConfig
 }
 
 /// <summary>
-/// 云背包里的一个物品(只保存类型/ID/数量, 不带装备状态)
+/// 云背包里的一个物品(类型/ID/数量; Equip 用于记录角色装备的武器)
 /// </summary>
 [System.Serializable]
 public class CloudItemData
 {
-    public string type;    // "Weapon" / "Food" / "Material"
+    public string type;    // "Weapon" / "Food" / "Material" / "Equip"(装备: itemID=武器ID, count=角色ID)
     public int itemID;
     public int count;
 }
@@ -303,4 +311,15 @@ public class CloudItemData
 public class CloudInventoryData
 {
     public System.Collections.Generic.List<CloudItemData> items = new System.Collections.Generic.List<CloudItemData>();
+}
+
+/// <summary>
+/// 委托存档数据(-1表示没有进行中的委托)
+/// </summary>
+[System.Serializable]
+public class QuestSaveData
+{
+    public int questID = -1;
+    public int progress;
+    public bool readyToSubmit;
 }

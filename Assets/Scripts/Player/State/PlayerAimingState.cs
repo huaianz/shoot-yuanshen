@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,6 +7,8 @@ using UnityEngine;
 /// </summary>
 public class PlayerAimingState : PlayerStateBase
 {
+    private Camera _cam;   // 缓存主相机(避免每帧 Camera.main 查找)
+
     #region 动画器相关
     private int aimingXHash;
     private int aimingYHash;
@@ -27,7 +29,8 @@ public class PlayerAimingState : PlayerStateBase
         playerModel.PlayStateAnimation("Aiming");
         if (IsBeControl())
         {
-            playerModel.weapon.RefreshWeaponData();
+            _cam = Camera.main;   // 缓存主相机
+            if (playerModel.weapon != null) playerModel.weapon.RefreshWeaponData();   // 没挂武器组件也不崩
             UpdateAimingTarget();
             playerController.EnterAim();
         }
@@ -40,24 +43,18 @@ public class PlayerAimingState : PlayerStateBase
         if (IsBeControl())
         {
             //让模型立刻旋转至相机方向
-            playerModel.transform.rotation = Quaternion.Euler(0, Camera.main.transform.eulerAngles.y, 0);
+            playerModel.transform.rotation = Quaternion.Euler(0, _cam.transform.eulerAngles.y, 0);
             UpdateAimingTarget();
 
             #region 退出瞄准监听
             if (!playerController.isAiming && !playerController.isFire)
             {
-                playerModel.SwitchState(PlayerState.Idle);
+                //松开瞄准/开枪: 如果还按着下蹲键, 回到下蹲状态, 否则回待机
+                playerModel.SwitchState(playerController.isCrouch ? PlayerState.Crouch : PlayerState.Idle);
                 return;
             }
             #endregion
 
-            #region 开火监听
-            if (playerController.isFire && !UIManager.IsAnyUIOpen)
-            {
-                playerModel.weapon.Fire(playerController.AimTarget.position);
-                playerController.ShakeCamera();
-            }
-            #endregion
 
             #region 处理移动输入
             aimingX = Mathf.Lerp(aimingX, playerController.moveIput.x, transitionSpeed * Time.deltaTime);
@@ -71,7 +68,7 @@ public class PlayerAimingState : PlayerStateBase
             {
                 playerModel.weapon.Fire(playerController.AimTarget.position);
                 playerController.ShakeCamera();
-                EventHandler.CallSoundEvent(playerModel.transform.position, 20f);   // 新增:开枪声源,半径20米
+                EventHandler.CallSoundEvent(playerModel.transform.position, 20f);   // 开枪声源,半径20米
             }
         }
     }
@@ -89,7 +86,7 @@ public class PlayerAimingState : PlayerStateBase
     private void UpdateAimingTarget()
     {
         //发射射线
-        Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+        Ray ray = _cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
         RaycastHit hit;
 
         //如果射线击中了物体

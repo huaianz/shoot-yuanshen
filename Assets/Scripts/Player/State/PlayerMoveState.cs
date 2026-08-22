@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,6 +10,7 @@ public class PlayerMoveState : PlayerStateBase
     private float runThreshold = 0;//奔跑阈值
     private float sprintThreshold = 1;//冲刺阈值
     private float transitionSpeed = 5;//过渡速度
+    private float sprintStaminaCost = 12f; //冲刺每秒消耗体力
     #endregion
 
     public override void Init(IStateMachineOwner owner)
@@ -45,11 +46,38 @@ public class PlayerMoveState : PlayerStateBase
                 return;
             }
             #endregion
+            //滑铲监听: 移动中同时按住Shift+Ctrl(要先于闪避/下蹲判断)
+            if (playerController.isSprint && playerController.isCrouch)
+            {
+                playerModel.SwitchState(PlayerState.Slide);
+                return;
+            }
+            //闪避监听(需要消耗体力, 体力不足无法闪避)
+            if (playerController.isDodge && GameManager.INSTANCE != null &&
+                GameManager.INSTANCE.TryConsumeStamina(GameManager.INSTANCE.dodgeStaminaCost))
+            {
+                playerModel.SwitchState(PlayerState.Dodge);
+                return;
+            }
+            //攀爬监听: 按E且面前有墙
+            if (playerController.isClimb && IsClimbableWall())
+            {
+                playerModel.SwitchState(PlayerState.Climb);
+                return;
+            }
+            //下蹲监听
+            if (playerController.isCrouch)
+            {
+                playerModel.SwitchState(PlayerState.Crouch);
+                return;
+            }
 
-            #region 处理移动速度
-            if (playerController.isSprint)
+            #region 处理移动速度(冲刺消耗体力, 走动不消耗)
+            bool canSprint = GameManager.INSTANCE == null || !GameManager.INSTANCE.IsStaminaEmpty;//体力空不能冲刺
+            if (playerController.isSprint && canSprint)
             {
                 moveBlend = Mathf.Lerp(moveBlend, sprintThreshold, transitionSpeed * Time.deltaTime);
+                if (GameManager.INSTANCE != null) GameManager.INSTANCE.ConsumeStamina(sprintStaminaCost * Time.deltaTime);
             }
             else
             {

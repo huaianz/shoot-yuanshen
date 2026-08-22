@@ -237,6 +237,46 @@ public class QuestManager : SingleMonoBase<QuestManager>
     }
 
     /// <summary>
+    /// 当前委托状态导出(云存档上传用)
+    /// </summary>
+    public QuestSaveData ExportQuestState()
+    {
+        return new QuestSaveData
+        {
+            questID = _activeQuest != null ? _activeQuest.questID : -1,
+            progress = _currentProgress,
+            readyToSubmit = _readyToSubmit
+        };
+    }
+
+    /// <summary>
+    /// 从存档恢复委托状态(登录后云存档调用)
+    /// </summary>
+    public void ImportQuestState(QuestSaveData data)
+    {
+        _activeQuest = null;
+        _currentProgress = 0;
+        _readyToSubmit = false;
+
+        if (data == null || data.questID < 0) return;   // 存档里没有委托
+
+        if (!_questDict.TryGetValue(data.questID, out var quest)) return;
+
+        _activeQuest = quest;
+        _currentProgress = Mathf.Clamp(data.progress, 0, quest.targetCount);
+        _readyToSubmit = data.readyToSubmit && _currentProgress >= quest.targetCount;
+
+        // 收集类: 进度按背包里实际数量重新算, 防止存档和背包对不上
+        if (quest.questType == QuestType.Collect)
+        {
+            _currentProgress = Mathf.Min(GetCollectCount(), quest.targetCount);
+            _readyToSubmit = _currentProgress >= quest.targetCount;
+        }
+
+        CallQuestUpdatedEvent();   // 刷新追踪UI
+    }
+
+    /// <summary>
     /// 发放物品奖励
     /// </summary>
     private void GiveRewardItem(int itemID, int amount)

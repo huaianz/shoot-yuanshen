@@ -70,9 +70,11 @@ public class PlayerWeapon : MonoBehaviour
     private int _lastWeaponID = -1;
     //当前武器的专属枪声
     private AudioClip _currentGunshot;
+    private Camera _cam;   // 缓存主相机(避免每发子弹查找)
 
     private void Awake()
     {
+        _cam = Camera.main;   // 缓存主相机(避免每发子弹查找)
         if (bulletPool == null)
         {
             bulletPool = GetComponent<BulletPool>();
@@ -109,7 +111,15 @@ public class PlayerWeapon : MonoBehaviour
         }
 
         var item = InventoryManager.INSTANCE.weaponData?.GetWeaponByID(weaponItem.itemID);
-        if (item == null) return;
+        if (item == null)
+        {
+            // 武器模板缺失: 也把弹匣归零, 避免 HUD 显示旧数据
+            magazineSize = 0;
+            currentAmmo = 0;
+            _bulletDamage = 10;
+            NotifyAmmoChanged();
+            return;
+        }
         //换枪，生成对应模型并且设置左手扶枪位置
         UpdateWeaponModel(item);
         _currentGunshot = item.gunshotClip;   // 缓存本武器的枪声
@@ -129,13 +139,19 @@ public class PlayerWeapon : MonoBehaviour
     /// </summary>
     private void UpdateWeaponModel(Weapon template)
     {
+        // 先检查新枪模型是否配置了, 再删旧枪(避免配置缺失时手里变空)
+        if (template == null || template.weaponModel == null)
+        {
+            Debug.LogWarning($"[PlayerWeapon] 武器 {(template != null ? template.weaponName : "未知")} 没有配置模型, 保留上一把枪");
+            return;
+        }
+
         // 删除上一把枪
         if (_currentGun != null)
         {
             Destroy(_currentGun);
             _currentGun = null;
         }
-        if (template == null || template.weaponModel == null) return;
 
         // 生成新枪, 用武器数据里的 Transform 组件数值
         _currentGun = Instantiate(template.weaponModel, rightHand);
@@ -166,7 +182,7 @@ public class PlayerWeapon : MonoBehaviour
             if (Time.time - lastFireTime >= bulletInterval)
             {
                 lastFireTime = Time.time;
-                AudioManager.INSTANCE.PlaySFX("Audio/SFX/Empty", 0.7f);
+                AudioManager.Instance.PlaySFX("Audio/SFX/Empty", 0.7f);
             }
             return;
         }
@@ -181,11 +197,11 @@ public class PlayerWeapon : MonoBehaviour
         // 发射原点: 枪口(手感最好)
         Vector3 origin = bullletSpawnPoint != null
             ? bullletSpawnPoint.position
-            : (Camera.main != null ? Camera.main.transform.position : Vector3.zero);
+            : (_cam != null ? _cam.transform.position : Vector3.zero);
 
-        if (Camera.main != null && Vector3.Distance(origin, Camera.main.transform.position) > 10f)
+        if (_cam != null && Vector3.Distance(origin, _cam.transform.position) > 10f)
         {
-            origin = Camera.main.transform.position;
+            origin = _cam.transform.position;
         }
 
         Vector3 direction = (targetPos - origin).normalized;
@@ -201,9 +217,9 @@ public class PlayerWeapon : MonoBehaviour
 
             // 枪声: 武器有专属枪声就用, 没有则用默认
             if (_currentGunshot != null)
-                AudioManager.INSTANCE.PlaySFX(_currentGunshot, 0.5f);
+                AudioManager.Instance.PlaySFX(_currentGunshot, 0.5f);
             else
-                AudioManager.INSTANCE.PlaySFX("Audio/SFX/Gunshot", 0.5f);
+                AudioManager.Instance.PlaySFX("Audio/SFX/Gunshot", 0.5f);
         }
     }
 
@@ -215,7 +231,7 @@ public class PlayerWeapon : MonoBehaviour
         if (isReloading) return;
         if (magazineSize <= 0 || currentAmmo >= magazineSize) return;
         isReloading = true;
-        AudioManager.INSTANCE.PlaySFX("Audio/SFX/Reload", 0.8f);  // 换弹音效
+        AudioManager.Instance.PlaySFX("Audio/SFX/Reload", 0.8f);  // 换弹音效
         NotifyAmmoChanged(); // 进入换弹状态(显示"装填中...")
         StartCoroutine(ReloadRoutine());
     }
