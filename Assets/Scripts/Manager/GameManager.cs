@@ -32,6 +32,16 @@ public class GameManager : SingleMonoBase<GameManager>
     private bool _sortedDirty = true;
     #endregion
 
+    #region 程序化迷宫
+    [Header("迷宫入口位置")]
+    [Tooltip("勾选后使用下面的固定坐标, 不勾选则用出生点+偏移")]
+    public bool useFixedMazePortalPos = false;
+    [Tooltip("固定坐标(勾选后生效)")]
+    public Vector3 mazePortalPos;
+    [Tooltip("相对出生点的偏移(不勾选固定坐标时生效)")]
+    public Vector3 mazePortalOffset = new Vector3(0f, 0f, 55f);
+    #endregion
+
     #region 体力相关
     [Tooltip("体力上限")]
     public float maxStamina = 100f;
@@ -110,6 +120,13 @@ public class GameManager : SingleMonoBase<GameManager>
             _respawnPosition = PlayerController.INSTANCE.currentPlayerModel.transform.position;
             _respawnRotation = PlayerController.INSTANCE.currentPlayerModel.transform.rotation;
             _respawnReady = true;
+        }
+
+        // 程序化迷宫试炼入口(可在 Inspector 勾选固定坐标或调整偏移)
+        if (_respawnReady)
+        {
+            Vector3 portalPos = useFixedMazePortalPos ? mazePortalPos : _respawnPosition + mazePortalOffset;
+            MazeManager.SetupPortal(portalPos);
         }
 
         // 预热三个自动创建的 UI(懒加载单例, 需要第一次调用才会创建)
@@ -562,7 +579,17 @@ public class GameManager : SingleMonoBase<GameManager>
         {
             return;
         }
-        data.currentHealth = Mathf.Max(0f, data.currentHealth - damage);
+        // 责任链伤害结算(敌人攻击无暴击, 护甲=角色防御)
+        DamageContext ctx = new DamageContext
+        {
+            baseDamage = damage,
+            critRate = 0f,
+            critDamage = 0f,
+            armor = data.finalDefense,
+            resistance = 0f,
+        };
+        int finalDamage = DamagePipeline.BuildDefault().Resolve(ctx);
+        data.currentHealth = Mathf.Max(0f, data.currentHealth - finalDamage);
 
         EventHandler.CallPlayerHealthChangedEvent(data.roleID, data.currentHealth, data.finalMaxHealth);
         //死亡: 回安全区

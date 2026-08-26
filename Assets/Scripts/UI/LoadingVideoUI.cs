@@ -115,7 +115,6 @@ public class LoadingVideoUI : MonoBehaviour
             _videoPlayer.renderMode = VideoRenderMode.RenderTexture;
             _videoPlayer.targetTexture = _rt;
             _videoPlayer.audioOutputMode = VideoAudioOutputMode.None;   // 加载视频不需要声音
-            _videoPlayer.timeSource = VideoTimeSource.DirectClock;      // 用真实时间, 不受 timeScale 暂停影响
             _videoPlayer.clip = Resources.Load<VideoClip>("Video/loading");
             _videoPlayer.loopPointReached += OnVideoFinished;   // 视频播完回调
         }

@@ -74,7 +74,7 @@ public class DamageNumberUI : MonoBehaviour
     /// <summary>
     /// 在敌人头顶显示伤害数字(世界坐标 -> 屏幕坐标)
     /// </summary>
-    public void Show(Vector3 worldPos, int damage)
+    public void Show(Vector3 worldPos, int damage, bool isCrit = false)
     {
         if (_cam == null) _cam = Camera.main;
         if (_cam == null) return;
@@ -94,7 +94,8 @@ public class DamageNumberUI : MonoBehaviour
         txt.gameObject.SetActive(true);
         txt.rectTransform.anchoredPosition = pos;
         txt.text = damage.ToString();
-        txt.color = Color.white;
+        txt.color = isCrit ? new Color(1f, 0.75f, 0.2f) : Color.white;   // 暴击黄色
+        txt.fontSize = isCrit ? 52 : 36;                                  // 暴击更大
 
         _active.Add(txt);
         _startPos.Add(pos);

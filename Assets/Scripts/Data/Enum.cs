@@ -110,6 +110,21 @@ public enum EnemyState
 }
 
 /// <summary>
+/// 玩家状态
+/// </summary>
+public enum PlayerState
+{
+    Idle,
+    Move,
+    Hover,
+    Aiming,
+    Crouch,//下蹲
+    Dodge,//闪避
+    Climb,//攀爬
+    Slide//滑铲
+}
+
+/// <summary>
 /// 委托类型
 /// </summary>
 public enum QuestType
@@ -135,4 +150,16 @@ public enum FoodStaminaType
     None,     // 不回体力(纯回血食物用这个)
     Instant,  // 一次性立即回体力
     OverTime  // 一段时间内每隔几秒回一次
+}
+
+/// <summary>
+/// 武器词条类型
+/// </summary>
+public enum WeaponAffixType
+{
+    ATKPercent,      // 攻击力百分比
+    FireRatePercent, // 射速百分比
+    MagazineBonus,   // 弹匣容量加成(数值)
+    CritRateBonus,   // 暴击率(0~1)
+    CritDamageBonus, // 暴击伤害加成(0~1)
 }

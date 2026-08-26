@@ -10,6 +10,10 @@ public class PlayerWeaponBullet : MonoBehaviour
 {
     [Tooltip("伤害")]
     public int damage = 10;
+    [Tooltip("暴击率(0~1)")]
+    public float critRate;
+    [Tooltip("暴击伤害加成(0.5=1.5倍)")]
+    public float critDamage;
     [HideInInspector]
     public Rigidbody rb;
     [Tooltip("推力")]

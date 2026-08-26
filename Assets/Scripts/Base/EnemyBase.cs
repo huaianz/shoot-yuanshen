@@ -59,6 +59,10 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
     #region 攻击力
     [Tooltip("攻击力")]
     public int attackDamage = 10;
+    [Tooltip("护甲(直接减伤)")]
+    public float armor = 0f;
+    [Tooltip("元素抗性(0~1, 百分比减伤)")]
+    public float resistance = 0f;
     #endregion
 
     #region 行为树支持(新敌人使用,旧僵尸不受影响)
@@ -275,8 +279,18 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         #endregion
 
         #region 血条相关
-        currentHealth -= bullet.damage * damageMultiplier;
-        DamageNumberUI.Instance.Show(transform.position + Vector3.up * 1.8f, Mathf.RoundToInt(bullet.damage * damageMultiplier));
+        // 责任链伤害结算: 基础伤害 -> 暴击 -> 护甲 -> 抗性
+        DamageContext ctx = new DamageContext
+        {
+            baseDamage = bullet.damage * damageMultiplier,
+            critRate = bullet.critRate,
+            critDamage = bullet.critDamage,
+            armor = armor,
+            resistance = resistance,
+        };
+        int finalDamage = DamagePipeline.BuildDefault().Resolve(ctx);
+        currentHealth -= finalDamage;
+        DamageNumberUI.Instance.Show(transform.position + Vector3.up * 1.8f, finalDamage, ctx.isCrit);
         if (currentHealth > 0)
         {
             healthBarShow_timer = 0;

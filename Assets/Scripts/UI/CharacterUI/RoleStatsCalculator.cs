@@ -12,11 +12,8 @@ public static class RoleStatsCalculator
 
         if (weapon != null)
         {
-            var template = InventoryManager.INSTANCE.weaponData?.GetWeaponByID(weapon.itemID);
-            if (template != null)
-            {
-                attack += template.weaponATK;
-            }
+            // 用装饰者链计算最终攻击力(含词条加成)
+            attack += WeaponStatProviderFactory.Build(weapon).ATK;
         }
 
         return (attack, defense, moveSpeed, maxHealth, maxArmor);

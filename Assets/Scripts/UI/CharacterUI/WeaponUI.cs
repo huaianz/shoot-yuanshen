@@ -108,7 +108,8 @@ public class WeaponUI : MonoBehaviour
         }
         if (weaponAtk != null)
         {
-            weaponAtk.text = item.weaponATK.ToString();
+            // 显示含词条加成的最终攻击力
+            weaponAtk.text = WeaponStatProviderFactory.Build(weaponData).ATK.ToString();
         }
         if (fireRate != null)
         {
@@ -120,7 +121,10 @@ public class WeaponUI : MonoBehaviour
         }
         if (weaponDesc != null)
         {
-            weaponDesc.text = item.weaponDescription;
+            // 基础描述 + 词条展示(装饰者链加成)
+            string affixText = WeaponStatProviderFactory.BuildAffixDescription(weaponData);
+            weaponDesc.text = item.weaponDescription
+                + (string.IsNullOrEmpty(affixText) ? "" : $"\n\n词条: {affixText}");
         }
     }
 

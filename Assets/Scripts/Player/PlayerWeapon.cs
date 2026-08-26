@@ -71,6 +71,8 @@ public class PlayerWeapon : MonoBehaviour
     //当前武器的专属枪声
     private AudioClip _currentGunshot;
     private Camera _cam;   // 缓存主相机(避免每发子弹查找)
+    private float _critRate;   // 当前武器暴击率(词条计算)
+    private float _critDamage; // 当前武器暴击伤害加成(词条计算)
 
     private void Awake()
     {
@@ -106,6 +108,9 @@ public class PlayerWeapon : MonoBehaviour
             magazineSize = 0;
             currentAmmo = 0;
             _bulletDamage = 10;
+            _critRate = 0f;
+            _critDamage = 0f;
+            bulletInterval = 0.15f;
             NotifyAmmoChanged();
             return;
         }
@@ -128,8 +133,13 @@ public class PlayerWeapon : MonoBehaviour
         {
             bulletPool.SetupWeapon(item.bulletPrefab, item.sparkPrefab);
         }
-        magazineSize = Mathf.Max(1, item.BulletNum);   // 弹匣容量 = 武器数据里的 BulletNum
-        _bulletDamage = Mathf.Max(1, item.weaponATK);  // 伤害 = 武器攻击力
+        // 装饰者链: 基础属性 + 词条加成(攻击/射速/弹匣/暴击)
+        IWeaponStatProvider stats = WeaponStatProviderFactory.Build(weaponItem);
+        _bulletDamage = Mathf.Max(1, stats.ATK);
+        _critRate = Mathf.Clamp01(stats.CritRate);
+        _critDamage = Mathf.Max(0f, stats.CritDamage);
+        bulletInterval = Mathf.Clamp(0.15f / Mathf.Max(0.1f, stats.FireRateMultiplier), 0.03f, 1f);
+        magazineSize = Mathf.Max(1, item.BulletNum + stats.MagazineBonus);
         currentAmmo = magazineSize;
         NotifyAmmoChanged();
     }
@@ -211,7 +221,9 @@ public class PlayerWeapon : MonoBehaviour
             PlayerWeaponBullet bullet = bulletPool.SpawnBullet(origin, direction);
             if (bullet != null)
             {
-                bullet.damage = _bulletDamage; // 伤害跟随武器攻击力
+                bullet.damage = _bulletDamage; // 伤害跟随武器攻击力(含词条)
+                bullet.critRate = _critRate;   // 暴击率给子弹, 受击时走责任链
+                bullet.critDamage = _critDamage;
             }
             bulletPool.SpawnSpark(origin, direction);
 

@@ -107,7 +107,34 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
     /// 往背包里加武器
     /// </summary>
     /// <param name="itemID">武器资源ID</param>
-    public void AddWeapon(int itemID)
+    /// <summary>根据武器星级随机生成词条(3星以上2条, 否则1条)</summary>
+    private List<int> RollWeaponAffixes(Weapon template)
+    {
+        int count = template.Stars >= 3 ? 2 : 1;
+        return WeaponAffixTable.Roll(count);
+    }
+
+    /// <summary>
+    /// 给还没有词条的武器随机补词条(老存档/云存档里的旧武器迁移用)
+    /// 已有词条的不动, 只在加载后调用一次
+    /// </summary>
+    public void EnsureWeaponAffixes()
+    {
+        foreach (string id in _weaponIds)
+        {
+            if (!_allItems.TryGetValue(id, out var it) || !(it is WeaponItem w)) continue;
+            if (w.affixIds != null && w.affixIds.Count > 0) continue;
+
+            Weapon template = weaponData?.GetWeaponByID(w.itemID);
+            if (template != null)
+            {
+                w.affixIds = RollWeaponAffixes(template);
+            }
+        }
+        _allItemsCacheDirty = true;
+    }
+
+    public void AddWeapon(int itemID, List<int> affixIds = null)
     {
         var item = weaponData.GetWeaponByID(itemID);
         if (item == null)
@@ -119,7 +146,8 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             instanceID = Guid.NewGuid().ToString("N"),
             itemID = itemID,
             isNew = true,
-            ownerID = -1
+            ownerID = -1,
+            affixIds = affixIds != null ? new List<int>(affixIds) : RollWeaponAffixes(item)
         };
 
         _allItems[newWeapon.instanceID] = newWeapon;
@@ -564,9 +592,8 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
         {
             return 0;
         }
-        var item = weaponData.GetWeaponByID(weapon.itemID);
-        //不为空则获取攻击力并返回
-        return item?.weaponATK ?? 0;
+        // 通过装饰者链计算最终攻击力(含词条加成)
+        return WeaponStatProviderFactory.Build(weapon).ATK;
     }
 
     /// <summary>
@@ -647,7 +674,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
         foreach (var id in _weaponIds)
         {
             if (_allItems.TryGetValue(id, out var it) && it is WeaponItem w)
-                data.items.Add(new CloudItemData { type = "Weapon", itemID = w.itemID, count = 1 });
+                data.items.Add(new CloudItemData { type = "Weapon", itemID = w.itemID, count = 1, extra = AffixIdsToExtra(w) });
         }
         foreach (var id in _foodIds)
         {
@@ -670,6 +697,25 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
         }
 
         return JsonUtility.ToJson(data);
+    }
+
+    /// <summary>词条列表 -> 逗号分隔字符串(存云档)</summary>
+    private static string AffixIdsToExtra(WeaponItem w)
+    {
+        if (w.affixIds == null || w.affixIds.Count == 0) return "";
+        return string.Join(",", w.affixIds);
+    }
+
+    /// <summary>逗号分隔字符串 -> 词条ID列表(空/异常返回null, 由AddWeapon自动随机)</summary>
+    private static List<int> ParseAffixIds(string extra)
+    {
+        if (string.IsNullOrEmpty(extra)) return null;
+        List<int> ids = new List<int>();
+        foreach (string part in extra.Split(','))
+        {
+            if (int.TryParse(part.Trim(), out int id)) ids.Add(id);
+        }
+        return ids.Count > 0 ? ids : null;
     }
 
     /// <summary>
@@ -710,7 +756,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
             switch (item.type)
             {
                 case "Weapon":
-                    AddWeapon(item.itemID);
+                    AddWeapon(item.itemID, ParseAffixIds(item.extra));
                     break;
                 case "Food":
                     AddFood(item.itemID, item.count);
@@ -731,6 +777,9 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                 EquipWeapon(id, item.count);
             }
         }
+
+        // 老存档武器没有词条, 补一次(有词条的不动)
+        EnsureWeaponAffixes();
 
     }
 
@@ -908,10 +957,11 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                     ownerID = item.ownerID,
                 };
 
-                if (item is WeaponItem)
+                if (item is WeaponItem weaponItem)
                 {
                     serializable.type = "Weapon";
                     serializable.count = 0;
+                    serializable.affixIds = weaponItem.affixIds ?? new List<int>();
                 }
                 else if (item is FoodItem food)
                 {
@@ -988,7 +1038,8 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                         instanceID = serializable.instanceID,
                         itemID = serializable.templateID,
                         isNew = serializable.isNew,
-                        ownerID = serializable.ownerID
+                        ownerID = serializable.ownerID,
+                        affixIds = serializable.affixIds ?? new List<int>()
                     };
                 }
                 else if (serializable.type == "Food")
@@ -1048,6 +1099,9 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
                 if (item.isNew)
                     _newItemIds.Add(item.instanceID);
             }
+
+            // 老存档/旧武器没有词条, 补一次(有词条的不动)
+            EnsureWeaponAffixes();
 
             Debug.Log($"读档成功！共加载 {_allItems.Count} 个物品");
         }
@@ -1136,6 +1190,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
         public bool isNew;
         public int ownerID;
         public int count;            // 仅食物使用，武器为0
+        public List<int> affixIds = new List<int>();   // 武器词条(本地存档)
     }
 
 

@@ -108,7 +108,8 @@ public class Food
 [Serializable]
 public class WeaponItem : ItemBase
 {
-    //目前没有额外的字段   
+    //装备词条ID列表(装饰者模式: 词条按链式叠加到武器属性上)
+    public List<int> affixIds = new List<int>();
 }
 
 [Serializable]
@@ -302,6 +303,7 @@ public class CloudItemData
     public string type;    // "Weapon" / "Food" / "Material" / "Equip"(装备: itemID=武器ID, count=角色ID)
     public int itemID;
     public int count;
+    public string extra;   // 附加数据(武器词条ID, 逗号分隔; 其他类型留空)
 }
 
 /// <summary>
@@ -322,4 +324,16 @@ public class QuestSaveData
     public int questID = -1;
     public int progress;
     public bool readyToSubmit;
+}
+
+/// <summary>
+/// 词条配置
+/// </summary>
+[System.Serializable]
+public class WeaponAffixData
+{
+    public int id;
+    public WeaponAffixType type;
+    public float value;
+    public string name;
 }

@@ -5,17 +5,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 using UnityEngine.AI;
-public enum PlayerState
-{
-    Idle,
-    Move,
-    Hover,
-    Aiming,
-    Crouch,//下蹲
-    Dodge,//闪避
-    Climb,//攀爬
-    Slide//滑铲
-}
+
 /// <summary>
 /// 角色模型
 /// </summary>
