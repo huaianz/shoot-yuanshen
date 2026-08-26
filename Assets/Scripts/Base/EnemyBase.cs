@@ -161,6 +161,7 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         {
             healthBar = Instantiate(healthBarPrefab, healthBarPos.position, Quaternion.identity);
             healthBar.transform.SetParent(UIManager.INSTANCE.WorldSpaceCanvas.transform);
+            healthBar.SetActive(false);   // 初始隐藏, 受击时才显示(否则会一直挂在出生点上不跟随)
         }
         #endregion
     }
@@ -178,6 +179,12 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
         #region 血条框显示
         if (healthBar != null)
         {
+            // 血条显示期间每帧跟随怪物(位置更新独立于显隐计时)
+            if (healthBar.activeSelf)
+            {
+                healthBar.transform.position = healthBarPos.position;
+            }
+
             if (healthBarShow_timer < healthBarShowTime)
             {
                 // 只在状态变化时 SetActive 一次, 避免每帧重复调用
@@ -186,7 +193,6 @@ public abstract class EnemyBase : MonoBehaviour, IStateMachineOwner
                     _healthBarVisible = true;
                     healthBar.SetActive(true);
                 }
-                healthBar.transform.position = healthBarPos.position;
                 healthBarShow_timer += Time.deltaTime;
             }
             else if (_healthBarVisible)

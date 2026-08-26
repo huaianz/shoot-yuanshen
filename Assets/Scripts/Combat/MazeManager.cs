@@ -199,15 +199,26 @@ public class MazeManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 复制 Unity 默认材质来创建带颜色的材质:
-    /// 保证着色器一定有效(直接 Shader.Find 可能找不到而变成紫色)
+    /// 创建带颜色的材质:
+    /// 优先用 URP 的 Lit 着色器(打包后一定存在, 不会被裁剪);
+    /// 找不到才兜底复制默认材质(编辑器下也能用)
     /// </summary>
     private Material CreateColoredMaterial(Color color)
     {
-        GameObject probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Material mat = new Material(probe.GetComponent<Renderer>().sharedMaterial);
-        Destroy(probe);
-        mat.color = color;
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        Material mat;
+        if (shader != null)
+        {
+            mat = new Material(shader);
+            mat.SetColor("_BaseColor", color);   // URP Lit 的主颜色属性
+        }
+        else
+        {
+            GameObject probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mat = new Material(probe.GetComponent<Renderer>().sharedMaterial);
+            Destroy(probe);
+            mat.color = color;
+        }
         return mat;
     }
 

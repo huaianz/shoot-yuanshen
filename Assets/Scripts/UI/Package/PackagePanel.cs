@@ -118,8 +118,6 @@ public class PackagePanel : BaseUIPanel
     private void Start()
     {
         RefreshUI();
-        //TODO:暂时调用打开背包鼠标显示
-        UIManager.EnterUIBlock();
     }
 
     /// <summary>
@@ -858,6 +856,7 @@ public class PackagePanel : BaseUIPanel
     public void OpenPanel()
     {
         gameObject.SetActive(true);
+        UIManager.EnterUIBlock();   // 进入UI模式: 显示鼠标 + 锁定玩家输入(不再需要按Alt, 点击也不会开枪)
         RefreshUI();
     }
 }
