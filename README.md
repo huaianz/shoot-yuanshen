@@ -7,7 +7,6 @@
 - 客户端：Unity 2021.3 + C# + Input System + Cinemachine
 - 服务器：C# .NET + SQLite，MVC 分层，TCP 自定义协议
 - 协议：4 字节长度 + 4 字节消息 ID + UTF-8 JSON
-- 编辑器拓展：GraphView 行为树节点编辑器、武器模型配置工具、宝箱动画控制器生成器
 
 ## 运行方法
 
@@ -62,11 +61,6 @@
 - **网络与云存档**：注册/登录/token、玩家数据上传下载（金币/背包/等级/委托/装备武器）、心跳保活
 - **地图切换**：传送门加载/卸载场景，全屏加载视频（倍速播完，期间锁定输入）
 
-## 编辑器工具（Assets/Editor）
-
-- **行为树图编辑器**：GraphView 可视化编辑 → 导出 JSON → 运行时加载执行
-- **武器模型配置工具**：从 FBX 自动匹配/填写武器模型挂点数据
-- **宝箱动画控制器生成器**：一键生成宝箱 Animator Controller
 
 ## 性能优化
 
@@ -92,7 +86,6 @@ Assets/
 │   ├── Item/         # 宝箱、拾取物
 │   ├── Portal/       # 传送门
 │   └── Door/         # 迷宫机关门
-├── Editor/           # 编辑器拓展（行为树图编辑器等）
 ├── Resources/        # 预制体、模型、音效、DataSO 配置
 └── Scenes/           # LoginScene / SampleScene / BattleMap
 ```
