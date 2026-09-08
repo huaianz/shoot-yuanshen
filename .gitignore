@@ -42,3 +42,5 @@ sysinfo.txt
 *.aab
 *.unitypackage
 *.app
+# 本地保留的抽卡小项目(不完整,不参与本仓库)
+/02_Unity抽卡项目/
