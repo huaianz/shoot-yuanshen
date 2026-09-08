@@ -1,0 +1,210 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02eeb8724cf8c904193159fd3ecfeeae, type: 3}
+  m_Name: FoodData
+  m_EditorClassIdentifier: 
+  foodList:
+  - foodID: 3001
+    foodName: "\u9C9C\u679C\u706B\u817F\u5410\u53F8"
+    healType: 0
+    healAmount: 1000
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u94FA\u6EE1\u9C9C\u679C\u4E0E\u706B\u817F\u7684\u5410\u53F8\uFF0C\u6E05\u751C\u89E3\u817B\uFF0C\u5C0F\u5E45\u6062\u590D\u751F\u547D\u503C"
+    iconPath: "Image/UI/Food/\u98DF\u726901"
+  - foodID: 3002
+    foodName: "\u852C\u83DC\u4E09\u660E\u6CBB"
+    healType: 0
+    healAmount: 900
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u751F\u83DC\u756A\u8304\u642D\u914D\u5168\u9EA6\u9762\u5305\uFF0C\u6E05\u723D\u9971\u8179\uFF0C\u6E29\u548C\u56DE\u8840"
+    iconPath: "Image/UI/Food/\u98DF\u726902"
+  - foodID: 3003
+    foodName: "\u6D77\u9C9C\u53CC\u62FC\u6D53\u6C64"
+    healType: 1
+    healAmount: 200
+    overTimeDuration: 60
+    tickInterval: 5
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u4E24\u79CD\u6D77\u9C9C\u7096\u716E\u6D53\u6C64\uFF0C\u6696\u80C3\u6ECB\u8865\uFF0C\u6062\u590D\u8F83\u591A\u8840\u91CF"
+    iconPath: "Image/UI/Food/\u98DF\u726903"
+  - foodID: 3004
+    foodName: "\u871C\u6843\u5976\u6CB9\u5410\u53F8"
+    healType: 0
+    healAmount: 1050
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u871C\u6843\u679C\u8089\u642D\u914D\u5976\u6CB9\u5410\u53F8\uFF0C\u9999\u751C\u67D4\u8F6F\uFF0C\u6062\u590D\u751F\u547D\u503C"
+    iconPath: "Image/UI/Food/\u98DF\u726904"
+  - foodID: 3005
+    foodName: "\u714E\u86CB\u852C\u83DC\u5410\u53F8"
+    healType: 0
+    healAmount: 1400
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u714E\u86CB\u914D\u65B0\u9C9C\u65F6\u852C\uFF0C\u5BB6\u5E38\u7B80\u9910\uFF0C\u5E73\u7A33\u56DE\u8840"
+    iconPath: "Image/UI/Food/\u98DF\u726905"
+  - foodID: 3006
+    foodName: "\u9EC4\u6CB9\u70E4\u6CD5\u68CD"
+    healType: 0
+    healAmount: 0
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 1
+    staminaAmount: 30
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u70D8\u70E4\u9165\u8106\u7684\u9EC4\u6CB9\u6CD5\u68CD\uFF0C\u5145\u9965\u5C0F\u98DF\uFF0C\u5C11\u91CF\u56DE\u8840"
+    iconPath: "Image/UI/Food/\u98DF\u726906"
+  - foodID: 3007
+    foodName: "\u8393\u679C\u5976\u6CB9\u5C0F\u86CB\u7CD5"
+    healType: 0
+    healAmount: 0
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 1
+    staminaAmount: 35
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u70B9\u7F00\u8393\u679C\u7684\u5976\u6CB9\u5C0F\u86CB\u7CD5\uFF0C\u751C\u6DA6\u6CBB\u6108\uFF0C\u56DE\u8840\u6548\u679C\u4E0D\u9519"
+    iconPath: "Image/UI/Food/\u98DF\u726907"
+  - foodID: 3008
+    foodName: "\u8702\u871C\u575A\u679C\u677E\u997C"
+    healType: 0
+    healAmount: 1500
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u8702\u871C\u677E\u997C\u642D\u914D\u575A\u679C\uFF0C\u9999\u751C\u625B\u997F\uFF0C\u6062\u590D\u8840\u91CF"
+    iconPath: "Image/UI/Food/\u98DF\u726908"
+  - foodID: 3009
+    foodName: "\u70E4\u8089\u852C\u83DC\u62FC\u76D8"
+    healType: 1
+    healAmount: 120
+    overTimeDuration: 60
+    tickInterval: 5
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u9999\u714E\u70E4\u8089\u642D\u914D\u751F\u83DC\uFF0C\u8089\u98DF\u8865\u7ED9\uFF0C\u9AD8\u989D\u56DE\u8840"
+    iconPath: "Image/UI/Food/\u98DF\u726909"
+  - foodID: 3010
+    foodName: "\u65E5\u5F0F\u6D77\u9C9C"
+    healType: 1
+    healAmount: 170
+    overTimeDuration: 60
+    tickInterval: 5
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u6D77\u9C9C\u76D6\u996D\uFF0C\u9C9C\u9999\u6D53\u90C1\uFF0C\u6062\u590D\u5927\u91CF\u751F\u547D\u503C"
+    iconPath: "Image/UI/Food/\u98DF\u726910"
+  - foodID: 3011
+    foodName: "\u591A\u5C42\u575A\u679C\u534E\u592B\u997C"
+    healType: 1
+    healAmount: 180
+    overTimeDuration: 60
+    tickInterval: 5
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u5806\u53E0\u575A\u679C\u788E\u7684\u534E\u592B\u751C\u54C1\uFF0C\u751C\u9999\u5145\u8DB3\uFF0C\u56DE\u8840\u9002\u4E2D"
+    iconPath: "Image/UI/Food/\u98DF\u726911"
+  - foodID: 3012
+    foodName: "\u9C9C\u679C\u9EC4\u6CB9\u5410\u53F8\u62FC\u76D8"
+    healType: 0
+    healAmount: 2000
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u591A\u79CD\u9C9C\u679C\u642D\u914D\u9EC4\u6CB9\u9762\u5305\uFF0C\u9178\u751C\u9002\u53E3\uFF0C\u6062\u590D\u751F\u547D"
+    iconPath: "Image/UI/Food/\u98DF\u726912"
+  - foodID: 3013
+    foodName: "\u9999\u80A0\u714E\u86CB\u9910"
+    healType: 1
+    healAmount: 200
+    overTimeDuration: 60
+    tickInterval: 5
+    staminaType: 0
+    staminaAmount: 0
+    staminaOverTimeDuration: 0
+    staminaTickInterval: 0
+    maxStack: 99
+    description: "\u70E4\u9999\u80A0\u642D\u914D\u6E8F\u5FC3\u714E\u86CB\uFF0C\u8089\u98DF\u4E3B\u98DF\uFF0C\u56DE\u8840\u6548\u7387\u9AD8"
+    iconPath: "Image/UI/Food/\u98DF\u726913"
+  - foodID: 3014
+    foodName: "\u8393\u679C\u5976\u6CB9\u8212\u8299\u857E"
+    healType: 0
+    healAmount: 0
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 2
+    staminaAmount: 20
+    staminaOverTimeDuration: 30
+    staminaTickInterval: 5
+    maxStack: 99
+    description: "\u84EC\u677E\u8212\u8299\u857E\u642D\u914D\u8393\u679C\u5976\u6CB9\uFF0C\u8F6F\u7CEF\u9999\u751C\uFF0C\u56DE\u8840\u4F18\u79C0"
+    iconPath: "Image/UI/Food/\u98DF\u726914"
+  - foodID: 3015
+    foodName: "\u5DE7\u514B\u529B\u95EA\u7535\u6CE1\u8299"
+    healType: 0
+    healAmount: 1900
+    overTimeDuration: 0
+    tickInterval: 0
+    staminaType: 2
+    staminaAmount: 15
+    staminaOverTimeDuration: 30
+    staminaTickInterval: 5
+    maxStack: 99
+    description: "\u6DCB\u5DE7\u514B\u529B\u9171\u7684\u957F\u6761\u6CE1\u8299\uFF0C\u751C\u53E3\u96F6\u98DF\uFF0C\u6062\u590D\u751F\u547D\u503C"
+    iconPath: "Image/UI/Food/\u98DF\u726915"

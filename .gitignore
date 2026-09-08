@@ -9,6 +9,12 @@
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
 
+# ========== 任意层级 Unity 缓存（防止嵌套工程被误传） ==========
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Uu]ser[Ss]ettings/
+
 # ========== IDE / 编辑器缓存 ==========
 .vs/
 .vscode/
@@ -36,20 +42,3 @@ sysinfo.txt
 *.aab
 *.unitypackage
 *.app
-
-# ========== 核心：只保留C#代码 ==========
-# 第1步：忽略 Assets 下所有文件和目录
-Assets/**/*
-
-# 第2步：关键！把所有子目录救回来（让Git能进去找文件）
-!Assets/**/
-
-# 第3步：只把 Scripts 文件夹里的 C# 脚本救回来
-!Assets/Scripts/
-!Assets/Scripts/**/
-!Assets/Scripts/**/*.cs
-!Assets/Scripts/**/*.cs.meta
-
-# ========== 保留项目设置和包（建议留着） ==========
-!/[Pp]rojectSettings/
-!/[Pp]ackages/

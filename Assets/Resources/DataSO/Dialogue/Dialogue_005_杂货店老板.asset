@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a95ca8582a3275c42b61c6a1b469f1d9, type: 3}
+  m_Name: "Dialogue_005_\u6742\u8D27\u5E97\u8001\u677F"
+  m_EditorClassIdentifier: 
+  dialogueID: 5
+  speakerName: "\u6742\u8D27\u5E97\u8001\u677F"
+  speakerPos: "\u6742\u8D27\u5E97\u4E3B"
+  dialogueText: "\u6B22\u8FCE\u5149\u4E34\u6211\u7684\u6742\u8D27\u5E97\uFF01\u8FD9\u91CC\u6709\u6700\u65B0\u9C9C\u7684\u98DF\u6750\uFF0C\u65E0\u8BBA\u662F\u70F9\u996A\u8FD8\u662F\u8865\u5145\u4F53\u529B\u90FD\u975E\u5E38\u5408\u9002\u3002\u770B\u770B\u6709\u4EC0\u4E48\u9700\u8981\u7684\u5427\uFF01"
+  options:
+  - optionText: "\u6211\u8981\u4E70\u4E1C\u897F"
+    nextDialogueID: 0
+    action:
+      type: 3
+      itemID: 0
+      amount: 0
+      eventName: 
+  - optionText: "\u4F60\u6709\u4EC0\u4E48\u63A8\u8350\uFF1F"
+    nextDialogueID: 6
+    action:
+      type: 0
+      itemID: 0
+      amount: 0
+      eventName: 
+  - optionText: "\u8D70\u4E86"
+    nextDialogueID: 0
+    action:
+      type: 0
+      itemID: 0
+      amount: 0
+      eventName: 
