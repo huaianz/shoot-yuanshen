@@ -10,7 +10,7 @@
 
 ## 运行方法
 
-1. 先启动服务器（配套仓库 `shoot-yuanshen-SERVER`，监听 8888 端口）
+1. 先启动服务器（配套仓库 `GameServer`，监听 8888 端口）
 2. 用 Unity 打开本项目
 3. 打开 `Assets/Scenes/LoginScene`，点击 Play
 4. 注册账号 → 登录 → 开始游戏
@@ -93,4 +93,4 @@ Assets/
 ## 说明
 
 - 美术与音频资源来自商店/免费素材包，代码与玩法为个人实现
-- 服务器为独立仓库：`shoot-yuanshen-SERVER`
+- 服务器为独立仓库：[GameServer](https://github.com/huaianz/GameServer)
