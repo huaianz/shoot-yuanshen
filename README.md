@@ -8,7 +8,6 @@
 
 - 百度网盘备用下载：[DEMO2.0.mp4](https://pan.baidu.com/s/1UL-GQJSa6_unHW-TZMQz3w?pwd=ABCD)　提取码：`ABCD`
 
-- B 站在线播放：待发布（发布后补充链接）
 
 ## 技术栈
 
