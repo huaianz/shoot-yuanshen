@@ -2,6 +2,14 @@
 
 第三人称射击 + 原神式动作系统的可游玩 Demo：登录注册、云存档、迷宫战斗、委托任务、背包装备、行为树 AI、可视化行为树编辑器，配套自研 C# TCP 服务器。
 
+## 演示视频
+
+- GitHub Release（1080p 完整演示，可直接下载）：[v1.0-demo](https://github.com/huaianz/shoot-yuanshen/releases/tag/v1.0-demo)
+
+- 百度网盘备用下载：[DEMO2.0.mp4](https://pan.baidu.com/s/1UL-GQJSa6_unHW-TZMQz3w?pwd=ABCD)　提取码：`ABCD`
+
+- B 站在线播放：待发布（发布后补充链接）
+
 ## 技术栈
 
 - 客户端：Unity 2021.3 + C# + Input System + Cinemachine
