@@ -42,10 +42,19 @@ public class GameClient : MonoBehaviour
     public const int MsgGetPlayerData = 200;
     public const int MsgSavePlayerData = 201;
 
+    public const int MsgRoomList = 300, MsgRoomListResp = 301;
+    public const int MsgCreateRoom = 302, MsgCreateRoomResp = 303;
+    public const int MsgJoinRoom = 304, MsgJoinRoomResp = 305;
+    public const int MsgLeaveRoom = 306;
+
     // 事件
     public event Action<LoginResult> OnLoginResult;
     public event Action<RegisterResult> OnRegisterResult;
     public event Action<PlayerDataResult> OnPlayerDataResult;
+
+    public event Action<RoomListResult> OnRoomListResult;
+    public event Action<RoomResult> OnCreateRoomResult;
+    public event Action<RoomResult> OnJoinRoomResult;
 
     private TcpClient _client;
     private NetworkStream _stream;
@@ -209,6 +218,59 @@ public class GameClient : MonoBehaviour
                 break;
             case MsgSavePlayerData:
                 break;
+            case MsgRoomListResp:
+                {
+                    var dto = JsonUtility.FromJson<RoomListResponseDto>(json);
+                    var result = new RoomListResult { success = dto.code == 0, msg = dto.msg };
+                    if (dto.rooms != null)
+                    {
+                        foreach (var r in dto.rooms)
+                        {
+                            result.rooms.Add(new RoomInfo
+                            {
+                                roomId = r.roomId,
+                                name = r.name,
+                                players = r.players,
+                                maxPlayers = r.maxPlayers,
+                                state = r.state
+                            });
+                        }
+                    }
+                    OnRoomListResult?.Invoke(result);
+                    break;
+                }
+
+            case MsgCreateRoomResp:
+                {
+                    var dto = JsonUtility.FromJson<CreateRoomResponseDto>(json);
+                    OnCreateRoomResult?.Invoke(new RoomResult
+                    {
+                        success = dto.code == 0,
+                        msg = dto.msg,
+                        roomId = dto.roomId,
+                        playerId = dto.playerId,
+                        battleIp = dto.battleIp,
+                        battlePort = dto.battlePort
+                    });
+                    break;
+                }
+
+            case MsgJoinRoomResp:
+                {
+                    var dto = JsonUtility.FromJson<JoinRoomResponseDto>(json);
+                    var result = new RoomResult
+                    {
+                        success = dto.code == 0,
+                        msg = dto.msg,
+                        roomId = dto.roomId,
+                        playerId = dto.playerId,
+                        battleIp = dto.battleIp,
+                        battlePort = dto.battlePort
+                    };
+                    if (dto.players != null) result.players.AddRange(dto.players);
+                    OnJoinRoomResult?.Invoke(result);
+                    break;
+                }
 
         }
     }
@@ -283,6 +345,32 @@ public class GameClient : MonoBehaviour
             total += n;
         }
         return true;
+    }
+    #endregion
+
+    #region 请求方法
+    public void RequestRoomList()
+    {
+        var dto = new RoomListRequestDto { token = Token };
+        _ = SendAsync(MsgRoomList, JsonUtility.ToJson(dto));
+    }
+
+    public void CreateRoom(string roomName, int maxPlayers = 2)
+    {
+        var dto = new CreateRoomRequestDto { token = Token, roomName = roomName, maxPlayers = maxPlayers };
+        _ = SendAsync(MsgCreateRoom, JsonUtility.ToJson(dto));
+    }
+
+    public void JoinRoom(string roomId)
+    {
+        var dto = new JoinRoomRequestDto { token = Token, roomId = roomId };
+        _ = SendAsync(MsgJoinRoom, JsonUtility.ToJson(dto));
+    }
+
+    public void LeaveRoom(string roomId)
+    {
+        var dto = new LeaveRoomRequestDto { token = Token, roomId = roomId };
+        _ = SendAsync(MsgLeaveRoom, JsonUtility.ToJson(dto));
     }
     #endregion
 }

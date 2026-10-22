@@ -215,7 +215,9 @@ public class PlayerWeapon : MonoBehaviour
         }
 
         Vector3 direction = (targetPos - origin).normalized;
-
+        // 联机: 上报服务器做权威命中判定，单机模式自动跳过
+        if (BattleClient.Instance != null && BattleClient.Instance.IsConnected)
+            BattleClient.Instance.SendFire(origin, direction);
         if (bulletPool != null)
         {
             PlayerWeaponBullet bullet = bulletPool.SpawnBullet(origin, direction);

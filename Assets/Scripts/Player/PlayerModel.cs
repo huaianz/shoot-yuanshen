@@ -22,6 +22,9 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     private StateMachine stateMachine;//动画状态机
     private PlayerState currentState;//当前状态
 
+    /// <summary>当前状态(联机同步用)</summary>
+    public PlayerState CurrentStateEnum => currentState;
+
     #region 约束相关
     public MultiAimConstraint rightHandAimConstraint;//正常状态下的右手约束
     public TwoBoneIKConstraint rightHandConstraint;//瞄准状态下的右手约束
