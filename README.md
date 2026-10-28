@@ -12,15 +12,17 @@
 ## 技术栈
 
 - 客户端：Unity 2021.3 + C# + Input System + Cinemachine
-- 服务器：C# .NET + SQLite，MVC 分层，TCP 自定义协议
+- 网关服务：C# .NET + SQLite，MVC 分层，TCP 自定义协议（账号、存档、房间）
+- 战斗服：Unity Headless，20Hz 权威世界推进、服务器权威 AI 与延迟补偿
 - 协议：4 字节长度 + 4 字节消息 ID + UTF-8 JSON
 
 ## 运行方法
 
-1. 先启动服务器（配套仓库 `GameServer`，监听 8888 端口）
-2. 用 Unity 打开本项目
-3. 打开 `Assets/Scenes/LoginScene`，点击 Play
-4. 注册账号 → 登录 → 开始游戏
+1. 先启动网关服务（配套仓库 `GameServer`，监听 8888 端口）
+2. 联机模式下再启动战斗服（配套仓库 `shoot-yuanshen-battle-server`，监听 7777 端口）
+3. 用 Unity 打开本项目
+4. 打开 `Assets/Scenes/LoginScene`，点击 Play
+5. 注册账号 → 登录 → 开始游戏
 
 打包时 Build Settings 需要包含三个场景（按顺序）：
 
@@ -100,4 +102,5 @@ Assets/
 ## 说明
 
 - 美术与音频资源来自商店/免费素材包，代码与玩法为个人实现
-- 服务器为独立仓库：[GameServer](https://github.com/huaianz/GameServer)
+- 网关服务独立仓库：[GameServer](https://github.com/huaianz/GameServer)
+- 战斗服独立仓库：[shoot-yuanshen-battle-server](https://github.com/huaianz/shoot-yuanshen-battle-server)
