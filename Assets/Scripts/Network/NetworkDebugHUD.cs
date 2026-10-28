@@ -55,7 +55,8 @@ public class NetworkDebugHUD : MonoBehaviour
             $"同房间玩家: {remoteCount + 1} 人\n" +
             $"快照缓冲: {bc.Buffer.Count} 帧   插值延迟: {bc.Buffer.InterpolationDelay * 1000f:F0} ms\n" +
             $"开火: {bc.ShotsSent}   命中: {bc.HitsConfirmed}   命中率: {(bc.ShotsSent > 0 ? bc.HitsConfirmed * 100f / bc.ShotsSent : 0f):F0}%\n" +
-            $"我的服务器HP: {bc.MyServerHp}";
+            $"我的服务器HP: {bc.MyServerHp}" +
+            $"局内金币: {bc.MatchCoins}";
 
 
     }

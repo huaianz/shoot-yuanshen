@@ -60,6 +60,9 @@ public class GameClient : MonoBehaviour
     private NetworkStream _stream;
     private bool _connected;
 
+    /// <summary>是否已连上网关</summary>
+    public bool IsConnected => _connected;
+
     [Header("心跳间隔(秒): 让服务器及时发现掉线连接")]
     public float heartbeatInterval = 10f;
     private float _heartbeatTimer;

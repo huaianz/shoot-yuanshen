@@ -58,6 +58,12 @@ public class BattleClient : MonoBehaviour
     /// 收到伤害结果(第 4 步做命中提示/伤害数字时用)
     /// </summary>
     public event Action<DamageResultDto> OnDamageResult;
+    public event Action<EnemyHitDto> OnEnemyHit;
+    public event Action<WaveStateDto> OnWaveState;
+    public event Action<EnemyShotDto> OnEnemyShot;
+    public event Action<RewardDto> OnReward;
+    public event Action<BuyResultDto> OnBuyResult;
+    public int MatchCoins { get; private set; }
     private TcpClient _tcp;
     private NetworkStream _stream;
     private readonly ConcurrentQueue<Action> _mainThread = new ConcurrentQueue<Action>();
@@ -276,6 +282,7 @@ public class BattleClient : MonoBehaviour
                 {
                     var dto = JsonUtility.FromJson<JoinAcceptedDto>(json);
                     MyPlayerId = dto.playerId;
+                    MatchCoins = dto.matchCoins;   // 以服务器为准(重连时恢复)
                     foreach (var p in dto.players)
                         if (p.id == MyPlayerId)
                         {
@@ -321,10 +328,43 @@ public class BattleClient : MonoBehaviour
             case BattleMsgId.Damage:
                 {
                     var dto = JsonUtility.FromJson<DamageResultDto>(json);
-                    if (dto.shooterId == MyPlayerId) HitsConfirmed++;
+                    if (dto.attackerKind == 0 && dto.shooterId == MyPlayerId) HitsConfirmed++;
                     if (dto.targetId == MyPlayerId) MyServerHp = dto.targetHp;
                     Debug.Log($"[BattleClient] 伤害: 射手={dto.shooterId} 目标={dto.targetId} 伤害={dto.damage} 目标HP={dto.targetHp} 击杀={dto.isKill}");
                     OnDamageResult?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.EnemyHit:
+                {
+                    var dto = JsonUtility.FromJson<EnemyHitDto>(json);
+                    if (dto.shooterId == MyPlayerId) HitsConfirmed++;
+                    OnEnemyHit?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.WaveState:
+                {
+                    var dto = JsonUtility.FromJson<WaveStateDto>(json);
+                    OnWaveState?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.EnemyShot:
+                {
+                    var dto = JsonUtility.FromJson<EnemyShotDto>(json);
+                    OnEnemyShot?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.Reward:
+                {
+                    var dto = JsonUtility.FromJson<RewardDto>(json);
+                    if (dto.playerId == MyPlayerId) MatchCoins = dto.total;
+                    OnReward?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.BuyResult:
+                {
+                    var dto = JsonUtility.FromJson<BuyResultDto>(json);
+                    if (dto.myHp > 0) MyServerHp = dto.myHp;
+                    OnBuyResult?.Invoke(dto);
                     break;
                 }
         }
@@ -435,6 +475,20 @@ public class BattleClient : MonoBehaviour
         };
         ShotsSent++;
         Send(BattleMsgId.Fire, JsonUtility.ToJson(dto));
+    }
+
+    public void SendBuy(int itemId)
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.Buy, "{\"itemId\":" + itemId + "}");
+    }
+
+    /// <summary>
+    /// 由场景传送/死亡回城调用: 下一次输入包跳过距离校验
+    /// </summary>
+    public void MarkTeleport()
+    {
+        _teleportPending = true;
     }
     #endregion
 }

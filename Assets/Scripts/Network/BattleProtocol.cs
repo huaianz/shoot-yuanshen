@@ -13,6 +13,12 @@ public static class BattleMsgId
     public const int PlayerJoinLeave = 404;// S→C 玩家进出
     public const int Join = 405;           // C→S 加入
     public const int JoinAccepted = 406;   // S→C 加入成功
+    public const int EnemyHit = 407;      // S→C 敌人受伤/死亡表现
+    public const int WaveState = 408;     // S→C 波次状态(剩余数量/是否通关)
+    public const int EnemyShot = 410;     // S→C 远程敌人弹道
+    public const int Reward = 411;        // S→C 击杀金币奖励
+    public const int Buy = 412;           // C→S 购买请求
+    public const int BuyResult = 413;     // S→C 购买结果
 }
 
 public static class BattlePack

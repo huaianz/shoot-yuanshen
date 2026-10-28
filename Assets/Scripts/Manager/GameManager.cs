@@ -50,10 +50,14 @@ public class GameManager : SingleMonoBase<GameManager>
     [HideInInspector]
     public float currentStamina = 100f;
 
-    /// <summary>当前体力是否为空</summary>
+    /// <summary>
+    /// 当前体力是否为空
+    /// </summary>
     public bool IsStaminaEmpty => currentStamina <= 0f;
 
-    /// <summary>持续消耗体力(跑步/攀爬用), 扣到0为止; 返回是否还有体力</summary>
+    /// <summary>
+    /// 持续消耗体力(跑步/攀爬用), 扣到0为止; 返回是否还有体力
+    /// </summary>
     public bool ConsumeStamina(float amount)
     {
         if (currentStamina <= 0f) return false;
@@ -62,7 +66,9 @@ public class GameManager : SingleMonoBase<GameManager>
         return currentStamina > 0f;
     }
 
-    /// <summary>一次性消耗体力(闪避用), 不足则不扣并返回false</summary>
+    /// <summary>
+    /// 一次性消耗体力(闪避用), 不足则不扣并返回false
+    /// </summary>
     public bool TryConsumeStamina(float amount)
     {
         if (currentStamina < amount) return false;
@@ -71,7 +77,9 @@ public class GameManager : SingleMonoBase<GameManager>
         return true;
     }
 
-    /// <summary>恢复体力(不超出上限)</summary>
+    /// <summary>
+    /// 恢复体力(不超出上限)
+    /// </summary>
     public void RecoverStamina(float amount)
     {
         if (currentStamina >= maxStamina) return;
@@ -98,7 +106,9 @@ public class GameManager : SingleMonoBase<GameManager>
         }
     }
 
-    /// <summary>按等级刷新体力上限: 每级+10, 并回满体力</summary>
+    /// <summary>
+    /// 按等级刷新体力上限: 每级+10, 并回满体力
+    /// </summary>
     public void RefreshMaxStamina(int level)
     {
         maxStamina = 100f + (level - 1) * 10f;
@@ -658,6 +668,8 @@ public class GameManager : SingleMonoBase<GameManager>
         {
             Vector3 target = _respawnReady ? _respawnPosition : player.transform.position;
             Quaternion targetRot = _respawnReady ? _respawnRotation : player.transform.rotation;
+
+            if (BattleClient.Instance != null) BattleClient.Instance.MarkTeleport();
 
             player.transform.position = target;
             player.transform.rotation = targetRot;

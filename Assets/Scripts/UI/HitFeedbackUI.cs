@@ -2,14 +2,14 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 命中/受击反馈
+/// 命中/受击/波次反馈
 /// </summary>
 public class HitFeedbackUI : MonoBehaviour
 {
     [Header("UI 引用")]
-    public Image hurtVignette;   // 全屏红色渐晕, 平时 alpha=0
-    public Image hitMarker;      // 命中标记, 平时 alpha=0
-    public Image killMarker;     // 击杀标记(没有可留空)
+    public Image hurtVignette;
+    public Image hitMarker;
+    public Image killMarker;
 
     [Header("时长(秒)")]
     public float hitDuration = 0.15f;
@@ -40,40 +40,35 @@ public class HitFeedbackUI : MonoBehaviour
 
     private void Start()
     {
-        if (BattleClient.Instance != null)
-            BattleClient.Instance.OnDamageResult += HandleDamage;
+        if (BattleClient.Instance == null) return;
+        BattleClient.Instance.OnDamageResult += HandleDamage;
+        BattleClient.Instance.OnEnemyHit += HandleEnemyHit;
+        BattleClient.Instance.OnWaveState += HandleWave;
+        BattleClient.Instance.OnReward += HandleReward;
     }
 
     private void OnDestroy()
     {
-        if (BattleClient.Instance != null)
-            BattleClient.Instance.OnDamageResult -= HandleDamage;
+        if (BattleClient.Instance == null) return;
+        BattleClient.Instance.OnDamageResult -= HandleDamage;
+        BattleClient.Instance.OnEnemyHit -= HandleEnemyHit;
+        BattleClient.Instance.OnWaveState -= HandleWave;
+        BattleClient.Instance.OnReward -= HandleReward;
     }
 
+    /// <summary>玩家之间的伤害</summary>
     private void HandleDamage(DamageResultDto dto)
     {
         int myId = BattleClient.Instance.MyPlayerId;
 
-        if (dto.shooterId == myId)
+        if (dto.attackerKind == 0 && dto.shooterId == myId)
         {
-            // 我打中别人
-            _hitTimer = hitDuration;
-            if (hitMarker != null) SetAlpha(hitMarker, 1f);
-
-            if (dto.isKill && killMarker != null)
-            {
-                killMarker.gameObject.SetActive(true);
-                SetAlpha(killMarker, 1f);
-            }
-
-            // 伤害数字: 复用你现有的 DamageNumberUI
-            if (DamageNumberUI.Instance != null)
-                DamageNumberUI.Instance.Show(
-                    new Vector3(dto.hitX, dto.hitY + 0.2f, dto.hitZ), dto.damage, false);
+            ShowHit(false);
+            DamageNumberUI.Instance?.Show(
+                new Vector3(dto.hitX, dto.hitY + 0.2f, dto.hitZ), dto.damage, false);
         }
         else if (dto.targetId == myId)
         {
-            // 我被击中
             _hurtTimer = hurtDuration;
             if (hurtVignette != null)
             {
@@ -87,9 +82,67 @@ public class HitFeedbackUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 我打中敌人
+    /// </summary>
+    private void HandleEnemyHit(EnemyHitDto dto)
+    {
+        if (dto.shooterId != BattleClient.Instance.MyPlayerId) return;
+
+        ShowHit(dto.isKill);
+        DamageNumberUI.Instance?.Show(
+            new Vector3(dto.hitX, dto.hitY + 0.2f, dto.hitZ), dto.damage, dto.isKill);
+    }
+
+    private void HandleWave(WaveStateDto dto)
+    {
+        if (dto.cleared)
+        {
+            ToastUI.ShowMessage(
+                $"第 {dto.wave} 波已清空  {dto.nextWaveInMs / 1000} 秒后刷新",
+                new Color(1f, 0.85f, 0.45f));
+        }
+        else if (dto.alive > 0 && dto.alive == dto.total)
+        {
+            string tip = dto.wave % 3 == 0 ? "精英波来袭" : "波次来袭";
+            ToastUI.ShowMessage(
+                $"第 {dto.wave} 波 {tip}  {dto.alive} 只",
+                new Color(1f, 0.65f, 0.3f));
+        }
+        else if (dto.alive <= 2 && dto.alive > 0)
+        {
+            ToastUI.ShowMessage($"只剩 {dto.alive} 只了", new Color(0.85f, 0.9f, 1f));
+        }
+    }
+
+    private void HandleReward(RewardDto dto)
+    {
+        if (dto.playerId != BattleClient.Instance.MyPlayerId) return;
+
+        string tag = string.IsNullOrEmpty(dto.reason)
+            ? (dto.elite ? "精英击杀" : "击杀")
+            : dto.reason;
+
+        ToastUI.ShowMessage(
+            $"{tag}  +{dto.coins} 金币  (共 {dto.total})",
+            new Color(1f, 0.9f, 0.5f));
+    }
+
+
+    private void ShowHit(bool isKill)
+    {
+        _hitTimer = hitDuration;
+        if (hitMarker != null) SetAlpha(hitMarker, 1f);
+
+        if (isKill && killMarker != null)
+        {
+            killMarker.gameObject.SetActive(true);
+            SetAlpha(killMarker, 1f);
+        }
+    }
+
     private void Update()
     {
-        // 命中标记: 淡出 + 轻微缩回
         if (hitMarker != null && _hitTimer > 0f)
         {
             _hitTimer -= Time.deltaTime;
@@ -99,7 +152,6 @@ public class HitFeedbackUI : MonoBehaviour
                 Vector3.Lerp(_hitBaseScale, _hitBaseScale * markerPunchScale, t);
         }
 
-        // 击杀标记: 跟命中标记同生命周期
         if (killMarker != null && killMarker.gameObject.activeSelf)
         {
             float t = Mathf.Clamp01(_hitTimer / hitDuration);
@@ -109,7 +161,6 @@ public class HitFeedbackUI : MonoBehaviour
             if (_hitTimer <= 0f) killMarker.gameObject.SetActive(false);
         }
 
-        // 受击红屏: 淡出
         if (hurtVignette != null && _hurtTimer > 0f)
         {
             _hurtTimer -= Time.deltaTime;
