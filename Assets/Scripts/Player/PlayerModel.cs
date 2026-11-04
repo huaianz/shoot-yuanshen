@@ -211,6 +211,21 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
         {
             playerDeltaMovement = averageDeltaMovement * Time.deltaTime;
         }
+
+        // 第一人称: 根运动只提供"速度大小", 方向由输入决定。
+        // 否则按 S 时模型仍朝前, 会继续向前跑(第三人称是靠先转身再向前跑来表现的)
+        var pc = PlayerController.INSTANCE;
+        if (pc != null && pc.IsFirstPerson)
+        {
+            Vector3 planar = new Vector3(playerDeltaMovement.x, 0f, playerDeltaMovement.z);
+            float speed = planar.magnitude;
+            Vector3 dir = pc.worldMovement;
+
+            playerDeltaMovement = dir.sqrMagnitude > 0.0001f
+                ? dir.normalized * speed
+                : Vector3.zero;
+        }
+
         playerDeltaMovement.y = verticalSpeed * Time.deltaTime;
         cc.Move(playerDeltaMovement);
     }

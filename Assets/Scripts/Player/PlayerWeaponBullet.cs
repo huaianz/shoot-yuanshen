@@ -21,6 +21,11 @@ public class PlayerWeaponBullet : MonoBehaviour
     [Tooltip("子弹存活时间")]
     public float lifeTime = 7f;
 
+    [Header("远端表现")]
+    [HideInInspector] public bool visualOnly;          // 纯视觉: 不检测碰撞, 不结算伤害
+    [HideInInspector] public float maxDistance = -1f;  // 视觉子弹的飞行距离(到服务器给的落点)
+    [HideInInspector] public System.Action<PlayerWeaponBullet> onFinished; // 回池回调
+
     [Tooltip("射线检测图层")]
     public LayerMask hitLayer = ~0;
 
@@ -32,6 +37,7 @@ public class PlayerWeaponBullet : MonoBehaviour
     //复用缓冲
     private static readonly Collider[] _overlapBuffer = new Collider[8];
     private float _aliveTime;
+    private float _travelled;
 
     private void Awake()
     {
@@ -41,6 +47,7 @@ public class PlayerWeaponBullet : MonoBehaviour
     private void OnEnable()
     {
         _aliveTime = 0f;
+        _travelled = 0f;
     }
 
     private void OnDisable()
@@ -61,7 +68,9 @@ public class PlayerWeaponBullet : MonoBehaviour
         rb.velocity = direction * flyPower;
         _prevPosition = transform.position;
         _aliveTime = 0f;
-        CheckInitialOverlap();
+        _travelled = 0f;
+
+        if (!visualOnly) CheckInitialOverlap();
     }
 
     private void Update()
@@ -69,12 +78,44 @@ public class PlayerWeaponBullet : MonoBehaviour
         _aliveTime += Time.deltaTime;
         if (_aliveTime >= lifeTime)
         {
-            pool?.ReturnBullet(this);
+            Finish();
+            return;
+        }
+
+        // 远端视觉子弹: 只飞行, 不做任何碰撞/伤害判定
+        if (visualOnly)
+        {
+            _travelled += Vector3.Distance(transform.position, _prevPosition);
+            _prevPosition = transform.position;
+
+            if (maxDistance > 0f && _travelled >= maxDistance)
+                Finish();
+
             return;
         }
 
         CheckCollision();
         _prevPosition = transform.position;
+    }
+
+    /// <summary>结束: 有回池回调就交给回调, 否则回默认池或销毁</summary>
+    private void Finish()
+    {
+        if (onFinished != null)
+        {
+            var callback = onFinished;
+            onFinished = null;
+            callback(this);
+            return;
+        }
+
+        if (pool != null)
+        {
+            pool.ReturnBullet(this);
+            return;
+        }
+
+        Destroy(gameObject);
     }
 
     /// <summary>
@@ -89,7 +130,7 @@ public class PlayerWeaponBullet : MonoBehaviour
             if (enemy != null)
             {
                 enemy.Hurt(this, 1);
-                pool?.ReturnBullet(this);
+                Finish();
                 return;
             }
         }
@@ -111,7 +152,7 @@ public class PlayerWeaponBullet : MonoBehaviour
                 enemy?.Hurt(this, 1);
             }
             //命中即回收,不再穿墙继续飞
-            pool?.ReturnBullet(this);
+            Finish();
         }
     }
 

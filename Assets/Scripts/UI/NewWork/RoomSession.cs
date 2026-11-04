@@ -28,6 +28,7 @@ public static class RoomSession
 
         GameClient.Instance.LeaveRoom(CurrentRoomId);
         BattleClient.Instance.Disconnect();
+        BattleClient.Instance.ClearRoomState();
         Debug.Log($"[RoomSession] 离开房间 {CurrentRoomId}");
         CurrentRoomId = null;
     }

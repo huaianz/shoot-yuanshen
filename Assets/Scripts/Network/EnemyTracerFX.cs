@@ -21,6 +21,7 @@ public class EnemyTracerFX : MonoBehaviour
     private readonly List<Tracer> _pool = new List<Tracer>();
     private Material _material;
     private int _next;
+    private bool _subscribed;
 
     private void Awake()
     {
@@ -46,29 +47,62 @@ public class EnemyTracerFX : MonoBehaviour
 
     private void OnEnable()
     {
-        if (BattleClient.Instance != null)
-            BattleClient.Instance.OnEnemyShot += HandleShot;
+        TrySubscribe();
+    }
+
+    private void Start()
+    {
+        // Awake 顺序不确定, Start 时 BattleClient.Instance 一定已经就绪
+        TrySubscribe();
+    }
+
+    private void TrySubscribe()
+    {
+        if (_subscribed || BattleClient.Instance == null) return;
+
+        BattleClient.Instance.OnEnemyShot += HandleShot;
+        _subscribed = true;
     }
 
     private void OnDisable()
     {
+        Unsubscribe();
+    }
+
+    private void OnDestroy()
+    {
+        Unsubscribe();
+    }
+
+    private void Unsubscribe()
+    {
+        if (!_subscribed) return;
+
         if (BattleClient.Instance != null)
             BattleClient.Instance.OnEnemyShot -= HandleShot;
+
+        _subscribed = false;
     }
 
     private void HandleShot(EnemyShotDto dto)
+    {
+        Draw(new Vector3(dto.fx, dto.fy, dto.fz),
+             new Vector3(dto.tx, dto.ty, dto.tz),
+             dto.hit ? hitColor : missColor);
+    }
+
+    private void Draw(Vector3 from, Vector3 to, Color color)
     {
         if (_pool.Count == 0) return;
 
         var t = _pool[_next];
         _next = (_next + 1) % _pool.Count;
 
-        t.Line.SetPosition(0, new Vector3(dto.fx, dto.fy, dto.fz));
-        t.Line.SetPosition(1, new Vector3(dto.tx, dto.ty, dto.tz));
+        t.Line.SetPosition(0, from);
+        t.Line.SetPosition(1, to);
 
-        Color c = dto.hit ? hitColor : missColor;
-        t.Line.startColor = c;
-        t.Line.endColor = c;
+        t.Line.startColor = color;
+        t.Line.endColor = color;
         t.Line.enabled = true;
         t.Life = lifetime;
     }

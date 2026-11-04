@@ -52,6 +52,9 @@ public class PlayerController : SingleMonoBase<PlayerController>
     public float rotationSpeed = 300;
 
     [HideInInspector]
+    public bool IsFirstPerson;   // 第一人称时由相机脚本控制身体朝向
+
+    [HideInInspector]
     public Vector3 localMovement;//本地空间下的玩家移动方向
     [HideInInspector]
     public Vector3 worldMovement;//世界空间下的玩家移动方向

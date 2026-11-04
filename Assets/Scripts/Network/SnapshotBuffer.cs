@@ -87,6 +87,7 @@ public class SnapshotBuffer
                 z = Mathf.Lerp(pa.z, pb.z, t),
                 yaw = Mathf.LerpAngle(pa.yaw, pb.yaw, t),
                 animId = pb.animId,
+                weaponId = pb.weaponId,
                 hp = pb.hp
             });
         }

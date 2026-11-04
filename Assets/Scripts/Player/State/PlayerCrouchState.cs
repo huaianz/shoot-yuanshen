@@ -40,7 +40,8 @@ public class PlayerCrouchState : PlayerStateBase
         {
             //旋转到移动方向(和站立移动同一个算法)
             float rad = Mathf.Atan2(playerController.localMovement.x, playerController.localMovement.z);
-            playerModel.transform.Rotate(0, rad * playerController.rotationSpeed * Time.deltaTime, 0);
+            if (!playerController.IsFirstPerson)
+                playerModel.transform.Rotate(0, rad * playerController.rotationSpeed * Time.deltaTime, 0);
 
             //用CharacterController推动位移(蹲走动画本身不带位移)
             playerModel.cc.Move(playerController.worldMovement * crouchMoveSpeed * Time.deltaTime);

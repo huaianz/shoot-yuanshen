@@ -61,9 +61,12 @@ public class BattleClient : MonoBehaviour
     public event Action<EnemyHitDto> OnEnemyHit;
     public event Action<WaveStateDto> OnWaveState;
     public event Action<EnemyShotDto> OnEnemyShot;
+    public event Action<PlayerShotDto> OnPlayerShot;
     public event Action<RewardDto> OnReward;
     public event Action<BuyResultDto> OnBuyResult;
+    public event Action OnRoomChanged;
     public int MatchCoins { get; private set; }
+    public int CurrentWave { get; private set; }
     private TcpClient _tcp;
     private NetworkStream _stream;
     private readonly ConcurrentQueue<Action> _mainThread = new ConcurrentQueue<Action>();
@@ -81,6 +84,7 @@ public class BattleClient : MonoBehaviour
     private string _lastSceneName;
     private bool _teleportPending;
     public int MyServerHp { get; private set; } = 100;
+    private int _connectionGen;   // 连接代次: 换房/重连时作废旧读循环
 
     private void Awake() { Instance = this; }
 
@@ -98,6 +102,7 @@ public class BattleClient : MonoBehaviour
     /// <summary>主动断开(离开房间时用)</summary>
     public void Disconnect()
     {
+        _connectionGen++;   // 让旧的读循环失效, 不会影响下一次连接
         RoomId = null;
         IsConnected = false;
         try { _stream?.Close(); } catch { }
@@ -105,26 +110,42 @@ public class BattleClient : MonoBehaviour
         _stream = null;
         _tcp = null;
         MyPlayerId = 0;
+
+        // 丢弃旧连接积压在主线程队列里的消息
+        while (_mainThread.TryDequeue(out _)) { }
+
         Debug.Log("[BattleClient] 已断开战斗服");
     }
 
     private async Task ConnectAsync()
     {
         if (IsConnected) return;
+
+        int gen = ++_connectionGen;
+
         try
         {
-            _tcp = new TcpClient();
-            await _tcp.ConnectAsync(host, port);
-            _stream = _tcp.GetStream();
+            var tcp = new TcpClient();
+            await tcp.ConnectAsync(host, port);
+
+            // 连接期间被断开/换了房间: 这条连接直接作废
+            if (gen != _connectionGen)
+            {
+                try { tcp.Close(); } catch { }
+                return;
+            }
+
+            _tcp = tcp;
+            _stream = tcp.GetStream();
             IsConnected = true;
             _reconnectCount = 0;
             _inputTimer = _heartbeatTimer = 0f;
-            Debug.Log($"[BattleClient] 已连接战斗服 {host}:{port}, 房间={RoomId}");
-            _ = ReadLoop();
+            _ = ReadLoop(gen, _stream);
             SendJoin();
         }
         catch (Exception e)
         {
+            if (gen != _connectionGen) return;
             IsConnected = false;
             Debug.LogWarning($"[BattleClient] 连接战斗服失败: {e.Message}");
         }
@@ -151,20 +172,20 @@ public class BattleClient : MonoBehaviour
         Send(BattleMsgId.Join, JsonUtility.ToJson(req));
     }
 
-    private async Task ReadLoop()
+    private async Task ReadLoop(int gen, NetworkStream stream)
     {
         try
         {
-            while (IsConnected)
+            while (gen == _connectionGen && IsConnected)
             {
-                byte[] header = await ReadExactly(8);
+                byte[] header = await ReadExactly(stream, 8);
                 if (header == null) break;
 
                 int len = BitConverter.ToInt32(header, 0);
                 int msgId = BitConverter.ToInt32(header, 4);
                 if (len <= 0 || len > 65536) break;
 
-                byte[] body = await ReadExactly(len);
+                byte[] body = await ReadExactly(stream, len);
                 if (body == null) break;
 
                 string json = Encoding.UTF8.GetString(body);
@@ -176,6 +197,8 @@ public class BattleClient : MonoBehaviour
         {
             Debug.LogWarning("[BattleClient] 读循环异常: " + e.Message);
         }
+
+        if (gen != _connectionGen) return;   // 旧连接的退出, 不应影响新连接
 
         IsConnected = false;
         Debug.Log("[BattleClient] 与战斗服的连接已断开");
@@ -254,20 +277,26 @@ public class BattleClient : MonoBehaviour
         var pc = PlayerController.INSTANCE;
         if (pc == null) return;
 
-        Vector3 pos = pc.currentPlayerModel != null ? pc.currentPlayerModel.transform.position : pc.transform.position;
+        // 角色的转向发生在模型节点上(PlayerMoveState/AimingState 都是转 playerModel),
+        // 根节点 PlayerController 的 yaw 基本不变, 所以这里必须取模型的朝向
+        Transform modelT = pc.currentPlayerModel != null ? pc.currentPlayerModel.transform : pc.transform;
+        Vector3 pos = modelT.position;
 
         var cmd = new InputCommandDto
         {
             tick = ++_inputTick,
             moveX = pc.worldMovement.x,
             moveZ = pc.worldMovement.z,
-            yaw = pc.transform.eulerAngles.y,
+            yaw = modelT.eulerAngles.y,
             buttons = (pc.isSprint ? 1 : 0) | (pc.isAiming ? 2 : 0) | (pc.isFire ? 4 : 0),
             clientTimeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             x = pos.x,
             y = pos.y,
             z = pos.z,
             animId = GetAnimId(pc.currentPlayerModel),
+            weaponId = pc.currentPlayerModel != null && pc.currentPlayerModel.weapon != null
+                ? pc.currentPlayerModel.weapon.CurrentWeaponID
+                : -1,
             teleport = _teleportPending
         };
         _teleportPending = false;      // 传送标记只发一次
@@ -283,20 +312,34 @@ public class BattleClient : MonoBehaviour
                     var dto = JsonUtility.FromJson<JoinAcceptedDto>(json);
                     MyPlayerId = dto.playerId;
                     MatchCoins = dto.matchCoins;   // 以服务器为准(重连时恢复)
+                    CurrentWave = dto.wave;
                     foreach (var p in dto.players)
                         if (p.id == MyPlayerId)
                         {
                             MyServerHp = p.hp;
                             break;
                         }
+                    string oldRoom = RoomId;
                     RoomId = dto.roomId;
                     LatestServerTick = dto.tick;
-                    Debug.Log($"[BattleClient] 加入战斗服成功: 我的id={MyPlayerId}, 房间={RoomId}");
+
+                    // 换房间: 清掉上一房间的快照和远端对象
+                    if (oldRoom != RoomId)
+                    {
+                        Buffer.Clear();
+                        OnRoomChanged?.Invoke();
+                    }
+                    Debug.Log($"[BattleClient] 加入战斗服成功: 我的id={MyPlayerId}, 房间={RoomId}, 房内玩家={dto.players.Count}");
                     break;
                 }
             case BattleMsgId.Snapshot:
                 {
                     var dto = JsonUtility.FromJson<SnapshotDto>(json);
+
+                    // 换房时旧连接的迟到包: 房间对不上直接丢掉
+                    if (!string.IsNullOrEmpty(dto.roomId) && dto.roomId != RoomId)
+                        break;
+
                     LatestSnapshot = dto;
                     LatestServerTick = dto.tick;
                     Buffer.Push(dto);              // 入插值缓冲
@@ -330,7 +373,6 @@ public class BattleClient : MonoBehaviour
                     var dto = JsonUtility.FromJson<DamageResultDto>(json);
                     if (dto.attackerKind == 0 && dto.shooterId == MyPlayerId) HitsConfirmed++;
                     if (dto.targetId == MyPlayerId) MyServerHp = dto.targetHp;
-                    Debug.Log($"[BattleClient] 伤害: 射手={dto.shooterId} 目标={dto.targetId} 伤害={dto.damage} 目标HP={dto.targetHp} 击杀={dto.isKill}");
                     OnDamageResult?.Invoke(dto);
                     break;
                 }
@@ -344,6 +386,7 @@ public class BattleClient : MonoBehaviour
             case BattleMsgId.WaveState:
                 {
                     var dto = JsonUtility.FromJson<WaveStateDto>(json);
+                    CurrentWave = dto.wave;
                     OnWaveState?.Invoke(dto);
                     break;
                 }
@@ -351,6 +394,12 @@ public class BattleClient : MonoBehaviour
                 {
                     var dto = JsonUtility.FromJson<EnemyShotDto>(json);
                     OnEnemyShot?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.PlayerShot:
+                {
+                    var dto = JsonUtility.FromJson<PlayerShotDto>(json);
+                    OnPlayerShot?.Invoke(dto);
                     break;
                 }
             case BattleMsgId.Reward:
@@ -390,13 +439,15 @@ public class BattleClient : MonoBehaviour
         catch (Exception e) { Debug.LogWarning("[BattleClient] 发送失败: " + e.Message); }
     }
 
-    private async Task<byte[]> ReadExactly(int count)
+    private async Task<byte[]> ReadExactly(NetworkStream stream, int count)
     {
+        if (stream == null) return null;
+
         byte[] buf = new byte[count];
         int total = 0;
         while (total < count)
         {
-            int n = await _stream.ReadAsync(buf, total, count - total);
+            int n = await stream.ReadAsync(buf, total, count - total);
             if (n <= 0) return null;
             total += n;
         }
@@ -481,6 +532,24 @@ public class BattleClient : MonoBehaviour
     {
         if (!IsConnected) return;
         Send(BattleMsgId.Buy, "{\"itemId\":" + itemId + "}");
+    }
+
+    /// <summary>请求服务器开始挑战(刷第一波)</summary>
+    public void SendStartWave()
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.StartWave, "{}");
+    }
+
+    /// <summary>退出房间后清空本局数据</summary>
+    public void ClearRoomState()
+    {
+        MyPlayerId = 0;
+        MatchCoins = 0;
+        CurrentWave = 0;
+        LatestSnapshot = null;
+        Buffer.Clear();
+        OnRoomChanged?.Invoke();
     }
 
     /// <summary>

@@ -90,7 +90,8 @@ public class PlayerMoveState : PlayerStateBase
             //计算移动方向与模型正前方向之间的夹角
             float rad = Mathf.Atan2(playerController.localMovement.x, playerController.localMovement.z);
             //旋转到移动方向
-            playerModel.transform.Rotate(0, rad * playerController.rotationSpeed * Time.deltaTime, 0);
+            if (!playerController.IsFirstPerson)
+                playerModel.transform.Rotate(0, rad * playerController.rotationSpeed * Time.deltaTime, 0);
             #endregion
         }
         //人机模式

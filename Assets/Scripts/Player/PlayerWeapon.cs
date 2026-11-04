@@ -68,6 +68,10 @@ public class PlayerWeapon : MonoBehaviour
     private int _bulletDamage = 10;
     private int _lastRoleID = -1;
     private int _lastWeaponID = -1;
+
+    /// <summary>当前装备武器的模板 id(-1 表示没装备)</summary>
+    public int CurrentWeaponID => _lastWeaponID;
+
     //当前武器的专属枪声
     private AudioClip _currentGunshot;
     private Camera _cam;   // 缓存主相机(避免每发子弹查找)
