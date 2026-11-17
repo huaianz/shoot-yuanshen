@@ -39,7 +39,7 @@ public class RegionBannerUI : MonoBehaviour
     /// </summary>
     private static readonly Dictionary<string, string> RegionNames = new Dictionary<string, string>
     {
-        { "SampleScene", "安全区" },
+        { "Game", "安全区" },
         { "BattleMap", "战斗区域" }
     };
 

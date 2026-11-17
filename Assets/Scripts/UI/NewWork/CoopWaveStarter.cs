@@ -98,6 +98,8 @@ public class CoopWaveStarter : MonoBehaviour
 
     private static bool CanUse(BattleClient bc)
     {
-        return bc != null && bc.IsConnected && bc.MyPlayerId > 0 && RoomSession.InRoom;
+        // 战术模式没有 PvE 波次, 不显示开始挑战按钮
+        return bc != null && bc.IsConnected && bc.MyPlayerId > 0
+            && RoomSession.InRoom && RoomSession.CurrentMode != "pvp";
     }
 }

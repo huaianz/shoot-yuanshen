@@ -109,7 +109,7 @@ public class AudioManager : SingleMonoBase<AudioManager>
         switch (scene.name)
         {
             case "LoginScene": PlayBGM("Audio/BGM/Login", bgmVolume, 1f); break;
-            case "SampleScene": PlayBGM("Audio/BGM/SafeZone", bgmVolume, 1f); break;
+            case "Game": PlayBGM("Audio/BGM/SafeZone", bgmVolume, 1f); break;
             case "BattleMap": PlayBGM("Audio/BGM/Battle", bgmVolume, 1f); break;
         }
     }

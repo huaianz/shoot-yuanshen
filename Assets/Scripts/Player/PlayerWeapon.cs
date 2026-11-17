@@ -68,9 +68,16 @@ public class PlayerWeapon : MonoBehaviour
     private int _bulletDamage = 10;
     private int _lastRoleID = -1;
     private int _lastWeaponID = -1;
+    private int _lastMatchWeaponID = -1;
 
     /// <summary>当前装备武器的模板 id(-1 表示没装备)</summary>
     public int CurrentWeaponID => _lastWeaponID;
+
+    public void SetWeaponVisible(bool visible)
+    {
+        if (_currentGun != null)
+            _currentGun.SetActive(visible);
+    }
 
     //当前武器的专属枪声
     private AudioClip _currentGunshot;
@@ -92,43 +99,54 @@ public class PlayerWeapon : MonoBehaviour
         RefreshWeaponData();
     }
 
+    private void Update()
+    {
+        int currentMatchWeaponId = GetMatchWeaponId();
+        if (currentMatchWeaponId != _lastMatchWeaponID)
+            RefreshWeaponData();
+    }
+
     /// <summary>
     /// 从当前装备武器刷新弹匣容量和伤害
     /// </summary>
     public void RefreshWeaponData()
     {
-        int roleID = GameManager.INSTANCE.GetActiveRoleID();
-        var weaponItem = InventoryManager.INSTANCE.GetRoleWeaponData(roleID);
-        int weaponID = weaponItem != null ? weaponItem.itemID : -1;
-        if (roleID == _lastRoleID && weaponID == _lastWeaponID)
+        PlayerModel ownerModel = GetComponentInParent<PlayerModel>();
+        string modelName = ownerModel != null ? ownerModel.name : name;
+        int roleID = ownerModel != null && ownerModel.roleID >= 0
+            ? ownerModel.roleID
+            : GameManager.INSTANCE.GetActiveRoleID();
+        WeaponItem weaponItem = InventoryManager.INSTANCE.GetRoleWeaponData(roleID);
+        int roleWeaponID = weaponItem != null ? weaponItem.itemID : -1;
+        int matchWeaponID = GetMatchWeaponId();
+        int weaponID = matchWeaponID > 0 ? matchWeaponID : roleWeaponID;
+
+        if (roleID == _lastRoleID
+            && weaponID == _lastWeaponID
+            && matchWeaponID == _lastMatchWeaponID)
         {
             return;
         }
         _lastRoleID = roleID;
         _lastWeaponID = weaponID;
+        _lastMatchWeaponID = matchWeaponID;
 
-        if (weaponItem == null)
+        if (weaponID < 0)
         {
-            magazineSize = 0;
-            currentAmmo = 0;
-            _bulletDamage = 10;
-            _critRate = 0f;
-            _critDamage = 0f;
-            bulletInterval = 0.15f;
-            NotifyAmmoChanged();
+            Debug.LogWarning($"[WeaponDebug] {modelName}: roleID={roleID} 没有装备武器");
+            ClearWeaponStats();
             return;
         }
 
-        var item = InventoryManager.INSTANCE.weaponData?.GetWeaponByID(weaponItem.itemID);
+        Weapon item = InventoryManager.INSTANCE.weaponData?.GetWeaponByID(weaponID);
         if (item == null)
         {
-            // 武器模板缺失: 也把弹匣归零, 避免 HUD 显示旧数据
-            magazineSize = 0;
-            currentAmmo = 0;
-            _bulletDamage = 10;
-            NotifyAmmoChanged();
+            Debug.LogWarning($"[WeaponDebug] {modelName}: roleID={roleID}, " +
+                             $"武器模板ID={weaponID} 在 WeaponData 中不存在");
+            ClearWeaponStats();
             return;
         }
+
         //换枪，生成对应模型并且设置左手扶枪位置
         UpdateWeaponModel(item);
         _currentGunshot = item.gunshotClip;   // 缓存本武器的枪声
@@ -137,15 +155,51 @@ public class PlayerWeapon : MonoBehaviour
         {
             bulletPool.SetupWeapon(item.bulletPrefab, item.sparkPrefab);
         }
-        // 装饰者链: 基础属性 + 词条加成(攻击/射速/弹匣/暴击)
-        IWeaponStatProvider stats = WeaponStatProviderFactory.Build(weaponItem);
-        _bulletDamage = Mathf.Max(1, stats.ATK);
-        _critRate = Mathf.Clamp01(stats.CritRate);
-        _critDamage = Mathf.Max(0f, stats.CritDamage);
-        bulletInterval = Mathf.Clamp(0.15f / Mathf.Max(0.1f, stats.FireRateMultiplier), 0.03f, 1f);
-        magazineSize = Mathf.Max(1, item.BulletNum + stats.MagazineBonus);
+
+        if (matchWeaponID > 0)
+        {
+            // 战术对局使用 WeaponData 中的独立对局伤害，不叠加跑图词条。
+            _bulletDamage = Mathf.Max(1, item.matchDamage);
+            _critRate = 0f;
+            _critDamage = 0.5f;
+            bulletInterval = Mathf.Clamp(
+                item.matchFireIntervalMs / 1000f, 0.05f, 2f);
+            magazineSize = Mathf.Max(1, item.BulletNum);
+        }
+        else
+        {
+            // 装饰者链: 基础属性 + 词条加成(攻击/射速/弹匣/暴击)
+            IWeaponStatProvider stats = WeaponStatProviderFactory.Build(weaponItem);
+            _bulletDamage = Mathf.Max(1, stats.ATK);
+            _critRate = Mathf.Clamp01(stats.CritRate);
+            _critDamage = Mathf.Max(0f, stats.CritDamage);
+            bulletInterval = Mathf.Clamp(
+                0.15f / Mathf.Max(0.1f, stats.FireRateMultiplier), 0.03f, 1f);
+            magazineSize = Mathf.Max(1, item.BulletNum + stats.MagazineBonus);
+        }
+
         currentAmmo = magazineSize;
         NotifyAmmoChanged();
+    }
+
+    private void ClearWeaponStats()
+    {
+        magazineSize = 0;
+        currentAmmo = 0;
+        _bulletDamage = 10;
+        _critRate = 0f;
+        _critDamage = 0f;
+        bulletInterval = 0.15f;
+        NotifyAmmoChanged();
+    }
+
+    private static int GetMatchWeaponId()
+    {
+        if (RoomSession.CurrentMode != "pvp"
+            || !RoomSession.InRoom
+            || BattleClient.Instance == null)
+            return 0;
+        return BattleClient.Instance.MyMatchWeaponId;
     }
 
     /// <summary>
@@ -160,6 +214,10 @@ public class PlayerWeapon : MonoBehaviour
             return;
         }
 
+        PlayerModel ownerModel = GetComponentInParent<PlayerModel>();
+        bool isMmdCharacter = ownerModel != null
+            && (ownerModel.name.Contains("甘雨") || ownerModel.name.Contains("宵宫"));
+
         // 删除上一把枪
         if (_currentGun != null)
         {
@@ -172,9 +230,18 @@ public class PlayerWeapon : MonoBehaviour
         _currentGun.transform.localPosition = template.weaponPosition;
         _currentGun.transform.localRotation = Quaternion.Euler(template.weaponRotation);
         _currentGun.transform.localScale = template.weaponScale;
+        Debug.Log($"[WeaponDebug] {ownerModel?.name ?? name}: " +
+                  $"roleID={(ownerModel != null ? ownerModel.roleID : -1)}, " +
+                  $"武器={template.weaponName}, 模型={template.weaponModel.name}, " +
+                  $"挂点={rightHand?.name}");
 
-        // 左手扶住枪管: 把 Left Hand Target 移到数据里的位置
-        if (leftHandTarget != null)
+        // 甘雨/宵宫的左右手 Target 由用户在场景中自行摆放，
+        // 运行时不重挂、不重设 Transform。
+        if (leftHandTarget != null && isMmdCharacter)
+        {
+            // 保留场景中的父物体和 Local Transform。
+        }
+        else if (leftHandTarget != null)
         {
             leftHandTarget.localPosition = template.LeftPosition;
             leftHandTarget.localRotation = Quaternion.Euler(template.LeftRotation);
@@ -269,4 +336,5 @@ public class PlayerWeapon : MonoBehaviour
     {
         EventHandler.CallAmmoChangedEvent(_lastRoleID, currentAmmo, magazineSize, isReloading);
     }
+
 }

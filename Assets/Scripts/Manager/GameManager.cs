@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.AI;
+using UnityEngine.Animations.Rigging;
 
 
 public class GameManager : SingleMonoBase<GameManager>
@@ -117,6 +118,54 @@ public class GameManager : SingleMonoBase<GameManager>
     }
     #endregion
 
+    protected override void Awake()
+    {
+        base.Awake();
+        if (INSTANCE != this || playerModels == null) return;
+
+        for (int i = 0; i < playerModels.Length; i++)
+        {
+            PlayerModel model = playerModels[i];
+            if (model == null) continue;
+            model.roleID = GetRoleIDForPlayerModel(i);
+
+            bool isMmdCharacter = model.name.Contains("甘雨") || model.name.Contains("宵宫");
+            if (isMmdCharacter)
+            {
+                foreach (MonoBehaviour behaviour
+                         in model.GetComponentsInChildren<MonoBehaviour>(true))
+                {
+                    if (behaviour != null && behaviour.GetType().Name == "MMD4MecanimModel")
+                        DisableMmdSkeletonUpdates(behaviour);
+                }
+
+                PlayerWeapon weapon = model.weapon != null
+                    ? model.weapon
+                    : model.GetComponentInChildren<PlayerWeapon>(true);
+                Animator animator = model.GetComponentInChildren<Animator>(true);
+                Transform rightHand = animator != null
+                    ? animator.GetBoneTransform(HumanBodyBones.RightHand)
+                    : null;
+                if (rightHand == null)
+                    rightHand = FindDeep(model.transform, "joint_RightWrist");
+
+                Transform weaponMount = FindDeep(model.transform, "WeaponMount");
+                if (weaponMount != null)
+                    rightHand = weaponMount;
+
+                if (weapon != null && rightHand != null)
+                {
+                    weapon.rightHand = rightHand;
+                    Debug.Log($"[MMDPlayer] {model.name} 右手武器挂点已绑定: {rightHand.name}");
+                }
+
+            }
+
+            if (i > 0)
+                model.gameObject.SetActive(false);
+        }
+    }
+
     private void Start()
     {
         //初始化角色系统
@@ -146,6 +195,54 @@ public class GameManager : SingleMonoBase<GameManager>
         _ = CloudSaveManager.Instance;            // 云存档(登录流程也会创建, 这里提前确保存在)
         RegionBannerUI.ShowRegion("安全区");      // 开局先显示一次地区
 
+    }
+
+    private static void DisableMmdSkeletonUpdates(MonoBehaviour mmdModel)
+    {
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.Public
+            | System.Reflection.BindingFlags.NonPublic;
+
+        System.Type type = mmdModel.GetType();
+        SetBooleanField(type, mmdModel, flags, "animEnabled", false);
+        SetBooleanField(type, mmdModel, flags, "pphEnabled", false);
+        SetBooleanField(type, mmdModel, flags, "pphEnabledNoAnimation", false);
+        SetBooleanField(type, mmdModel, flags, "pphShoulderEnabled", false);
+        SetBooleanField(type, mmdModel, flags, "ikEnabled", false);
+        SetBooleanField(type, mmdModel, flags, "fullBodyIKEnabled", false);
+        SetBooleanField(type, mmdModel, flags, "boneInherenceEnabled", false);
+
+        System.Reflection.FieldInfo physics = type.GetField("physicsEngine", flags);
+        if (physics != null)
+        {
+            // Mono 不支持 Convert.ChangeType(int, enumType)，必须显式使用 Enum.ToObject。
+            object disabledValue = physics.FieldType.IsEnum
+                ? System.Enum.ToObject(physics.FieldType, 0)
+                : System.Convert.ChangeType(0, physics.FieldType);
+            physics.SetValue(mmdModel, disabledValue);
+        }
+    }
+
+    private static void SetBooleanField(System.Type type, object target,
+        System.Reflection.BindingFlags flags, string fieldName, bool value)
+    {
+        System.Reflection.FieldInfo field = type.GetField(fieldName, flags);
+        if (field != null && field.FieldType == typeof(bool))
+            field.SetValue(target, value);
+    }
+
+    private static Transform FindDeep(Transform root, string targetName)
+    {
+        if (root == null) return null;
+        if (root.name == targetName) return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindDeep(root.GetChild(i), targetName);
+            if (found != null) return found;
+        }
+        return null;
     }
     /// <summary>
     /// 批量删除物品
@@ -384,33 +481,44 @@ public class GameManager : SingleMonoBase<GameManager>
     /// </summary>
     public void GiveStarterWeapon()
     {
-        int activeRoleID = GetActiveRoleID();
-        if (activeRoleID < 0) return;
-
-        // 当前角色已经装备武器就不再给(老玩家/存档玩家)
-        if (!string.IsNullOrEmpty(InventoryManager.INSTANCE.GetRoleWeaponId(activeRoleID))) return;
-
-        // 按名字找武器, 不硬编码ID(配置表ID变了也不怕)
         var weapon = InventoryManager.INSTANCE.weaponData?.weaponList?.Find(w => w.weaponName == "异世·星辉之铳");
-        if (weapon == null) return;
+        if (weapon == null)
+            return;
 
-        // 背包里没有就先加一把
-        string instanceID = InventoryManager.INSTANCE.GetFirstWeaponInstanceID(weapon.weaponID);
-        if (string.IsNullOrEmpty(instanceID))
+        // 每个上阵角色都必须有自己的武器实例，否则切换甘雨/宵宫后
+        // PlayerWeapon 找不到角色武器，不会生成枪模型。
+        foreach (RoleRuntimeData role in GetAllRoles())
         {
-            InventoryManager.INSTANCE.AddWeapon(weapon.weaponID);
-            instanceID = InventoryManager.INSTANCE.GetFirstWeaponInstanceID(weapon.weaponID);
+            if (InventoryManager.INSTANCE.GetRoleWeaponData(role.roleID) != null)
+                continue;
+
+            // 优先使用 PlayerData 中该角色的 weaponID。
+            int weaponTemplateID = weapon.weaponID;
+            if (role.baseData != null && role.baseData.weaponID > 0
+                && InventoryManager.INSTANCE.weaponData != null
+                && InventoryManager.INSTANCE.weaponData.GetWeaponByID(
+                    role.baseData.weaponID) != null)
+            {
+                weaponTemplateID = role.baseData.weaponID;
+            }
+
+            // 必须新生成实例，避免多个角色抢同一把已装备武器。
+            string instanceID =
+                InventoryManager.INSTANCE.AddWeapon(weaponTemplateID);
+
+            if (!string.IsNullOrEmpty(instanceID))
+                InventoryManager.INSTANCE.EquipWeapon(instanceID, role.roleID);
         }
-        if (string.IsNullOrEmpty(instanceID)) return;
 
-        // 装备到当前角色
-        InventoryManager.INSTANCE.EquipWeapon(instanceID, activeRoleID);
-
-        // 立即刷新玩家手上的武器(防止显示 0/0)
-        if (PlayerController.INSTANCE != null && PlayerController.INSTANCE.currentPlayerModel != null
-            && PlayerController.INSTANCE.currentPlayerModel.weapon != null)
+        // 已激活角色立即生成当前武器；后台角色在 SwitchPlayerModel 时刷新。
+        if (playerModels != null)
         {
-            PlayerController.INSTANCE.currentPlayerModel.weapon.RefreshWeaponData();
+            foreach (PlayerModel model in playerModels)
+            {
+                if (model != null && model.weapon != null
+                    && model.gameObject.activeInHierarchy)
+                    model.weapon.RefreshWeaponData();
+            }
         }
     }
     /// <summary>
@@ -434,6 +542,56 @@ public class GameManager : SingleMonoBase<GameManager>
     public int GetActiveRoleID()
     {
         return _currentActiveRoleID;
+    }
+
+    /// <summary>
+    /// 将场景模型映射到 PlayerData 中的角色ID。
+    /// 优先按角色名匹配，名称不一致时按 playerModels 的索引回退。
+    /// </summary>
+    public int GetRoleIDForPlayerModel(int modelIndex)
+    {
+        if (playerModels == null || modelIndex < 0 || modelIndex >= playerModels.Length)
+            return -1;
+
+        PlayerModel model = playerModels[modelIndex];
+        if (playerData_SO != null && playerData_SO.characterList != null)
+        {
+            foreach (Character role in playerData_SO.characterList)
+            {
+                string roleName = role.characterName ?? string.Empty;
+                if (model != null)
+                {
+                    string modelName = model.name;
+                    if ((!string.IsNullOrEmpty(roleName) && modelName.Contains(roleName))
+                        || (roleName == "荧" && modelName.Contains("Lumine"))
+                        || (roleName == "芙宁娜" && modelName.Contains("Furina")))
+                    {
+                        return role.characterID;
+                    }
+                }
+            }
+
+            if (modelIndex < playerData_SO.characterList.Count)
+                return playerData_SO.characterList[modelIndex].characterID;
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// 根据角色ID查找对应的场景模型索引。
+    /// </summary>
+    public int GetModelIndexForRoleID(int roleID)
+    {
+        if (playerModels == null)
+            return -1;
+
+        for (int i = 0; i < playerModels.Length; i++)
+        {
+            if (GetRoleIDForPlayerModel(i) == roleID)
+                return i;
+        }
+        return -1;
     }
 
 

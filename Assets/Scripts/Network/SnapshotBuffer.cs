@@ -88,6 +88,8 @@ public class SnapshotBuffer
                 yaw = Mathf.LerpAngle(pa.yaw, pb.yaw, t),
                 animId = pb.animId,
                 weaponId = pb.weaponId,
+                team = pb.team,
+                matchCoins = pb.matchCoins,
                 hp = pb.hp
             });
         }

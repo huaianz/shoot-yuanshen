@@ -53,6 +53,7 @@ public class PlayerController : SingleMonoBase<PlayerController>
 
     [HideInInspector]
     public bool IsFirstPerson;   // 第一人称时由相机脚本控制身体朝向
+    public bool IsInteractionLocked { get; private set; }
 
     [HideInInspector]
     public Vector3 localMovement;//本地空间下的玩家移动方向
@@ -83,22 +84,27 @@ public class PlayerController : SingleMonoBase<PlayerController>
     // Update is called once per frame
     void Update()
     {
-        #region UI打开时锁定玩家
-        if (UIManager.IsAnyUIOpen)
+        if (IsInteractionLocked)
         {
-            //输入清零
-            moveIput = Vector2.zero;
-            isSprint = false;
-            isAiming = false;
-            isJumping = false;
-            isFire = false;
-            //方向向量清零
-            worldMovement = Vector3.zero;
-            localMovement = Vector3.zero;
+            ClearPlayerInput();
+            return;
+        }
 
+        HandleDebugFunctionKeys();
+
+        #region UI打开或战术模式阵亡时锁定玩家
+        bool pvpDead = BattleClient.Instance != null
+            && RoomSession.CurrentMode == "pvp"
+            && BattleClient.Instance.MyServerHp <= 0;
+
+        if (UIManager.IsAnyUIOpen || pvpDead)
+        {
+            ClearPlayerInput();
             return;
         }
         #endregion
+
+        HandleDebugNumberKeys();
 
         #region 更新玩家输入
         moveIput = input.Player.Move.ReadValue<Vector2>().normalized;
@@ -127,19 +133,75 @@ public class PlayerController : SingleMonoBase<PlayerController>
         #endregion
 
         #region 切换角色输入监听
-        if (input.Player.First.triggered)
-        {
-            SwitchPlayerModel(0);
-        }
-        else if (input.Player.Second.triggered)
-        {
-            SwitchPlayerModel(1);
-        }
-        else if (input.Player.Third.triggered)
-        {
-            SwitchPlayerModel(2);
-        }
         #endregion
+    }
+
+    private void ClearPlayerInput()
+    {
+        moveIput = Vector2.zero;
+        isSprint = false;
+        isAiming = false;
+        isJumping = false;
+        isFire = false;
+        isCrouch = false;
+        isDodge = false;
+        isClimb = false;
+        worldMovement = Vector3.zero;
+        localMovement = Vector3.zero;
+    }
+
+    public void BeginInteraction()
+    {
+        if (IsInteractionLocked)
+            return;
+
+        IsInteractionLocked = true;
+        ClearPlayerInput();
+        if (currentPlayerModel != null)
+        {
+            currentPlayerModel.ExitAim();
+            currentPlayerModel.SwitchState(PlayerState.Idle);
+        }
+    }
+
+    public void EndInteraction()
+    {
+        if (!IsInteractionLocked)
+            return;
+
+        IsInteractionLocked = false;
+        ClearPlayerInput();
+        currentPlayerModel?.SwitchState(PlayerState.Idle);
+    }
+
+    private void HandleDebugFunctionKeys()
+    {
+        var keyboard = UnityEngine.InputSystem.Keyboard.current;
+        if (keyboard == null) return;
+
+        if (keyboard.f1Key.wasPressedThisFrame)
+            SwitchPlayerModel(0);
+        else if (keyboard.f2Key.wasPressedThisFrame)
+            SwitchPlayerModel(1);
+        else if (keyboard.f3Key.wasPressedThisFrame)
+            SwitchPlayerModel(2);
+        else if (keyboard.f4Key.wasPressedThisFrame)
+            SwitchPlayerModel(3);
+    }
+
+    private void HandleDebugNumberKeys()
+    {
+        var keyboard = UnityEngine.InputSystem.Keyboard.current;
+        if (keyboard == null) return;
+
+        if (keyboard.digit1Key.wasPressedThisFrame)
+            SwitchPlayerModel(0);
+        else if (keyboard.digit2Key.wasPressedThisFrame)
+            SwitchPlayerModel(1);
+        else if (keyboard.digit3Key.wasPressedThisFrame)
+            SwitchPlayerModel(2);
+        else if (keyboard.digit4Key.wasPressedThisFrame)
+            SwitchPlayerModel(3);
     }
 
     /// <summary>
@@ -170,11 +232,34 @@ public class PlayerController : SingleMonoBase<PlayerController>
     /// <param name="index">下标</param>
     public void SwitchPlayerModel(int index)
     {
-        if (index >= GameManager.INSTANCE.playerModels.Length || GameManager.INSTANCE.playerModels[index] == null)
+        if (GameManager.INSTANCE == null || GameManager.INSTANCE.playerModels == null
+            || index < 0 || index >= GameManager.INSTANCE.playerModels.Length
+            || GameManager.INSTANCE.playerModels[index] == null)
             return;
-        currentPlayerModel.Exit();
-        currentPlayerModel = GameManager.INSTANCE.playerModels[index];
+
+        PlayerModel next = GameManager.INSTANCE.playerModels[index];
+        if (next == currentPlayerModel && next.gameObject.activeInHierarchy)
+            return;
+
+        if (currentPlayerModel != null)
+        {
+            Vector3 position = currentPlayerModel.transform.position;
+            Quaternion rotation = currentPlayerModel.transform.rotation;
+            next.transform.SetPositionAndRotation(position, rotation);
+            if (currentPlayerModel.gameObject.activeInHierarchy)
+                currentPlayerModel.Exit();
+            currentPlayerModel.gameObject.SetActive(false);
+        }
+
+        currentPlayerModel = next;
+        currentPlayerModel.gameObject.SetActive(true);
         currentPlayerModel.Enter();
+
+        int roleID = GameManager.INSTANCE.GetRoleIDForPlayerModel(index);
+        if (roleID >= 0)
+            GameManager.INSTANCE.SetActiveRole(roleID);
+
+        currentPlayerModel.weapon?.RefreshWeaponData();
         ResetCameraTarget();
     }
 
@@ -239,4 +324,5 @@ public class PlayerController : SingleMonoBase<PlayerController>
     {
         input.Disable();
     }
+
 }

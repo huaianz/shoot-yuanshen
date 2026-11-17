@@ -21,7 +21,7 @@ public class PlayerDataResponseDto { public int code; public string msg; public 
 public class SavePlayerDataRequestDto { public string token; public int coin; public string inventoryJson; public string roleDataJson; public string questDataJson; }
 
 public class RoomListResult { public bool success; public string msg; public List<RoomInfo> rooms = new(); }
-public class RoomInfo { public string roomId; public string name; public int players; public int maxPlayers; public string state; }
+public class RoomInfo { public string roomId; public string name; public int players; public int maxPlayers; public string state; public string mode; }
 public class RoomResult
 {
     public bool success;
@@ -30,6 +30,8 @@ public class RoomResult
     public string playerId;
     public string battleIp;
     public int battlePort;
+    public string mode;
+    public int maxPlayers;
     public List<string> players = new List<string>();
 }
 //房间请求/响应 DTO 
@@ -43,6 +45,7 @@ public class RoomInfoDto
     public int players;
     public int maxPlayers;
     public string state;
+    public string mode;
 }
 
 [Serializable]
@@ -54,7 +57,7 @@ public class RoomListResponseDto
 }
 
 [Serializable]
-public class CreateRoomRequestDto { public string token; public string roomName; public int maxPlayers; }
+public class CreateRoomRequestDto { public string token; public string roomName; public int maxPlayers; public string mode; }
 
 [Serializable]
 public class CreateRoomResponseDto
@@ -65,6 +68,8 @@ public class CreateRoomResponseDto
     public string playerId;
     public string battleIp;
     public int battlePort;
+    public string mode;
+    public int maxPlayers;
 }
 
 [Serializable]
@@ -79,6 +84,8 @@ public class JoinRoomResponseDto
     public string playerId;
     public string battleIp;
     public int battlePort;
+    public string mode;
+    public int maxPlayers;
     public string[] players;
 }
 

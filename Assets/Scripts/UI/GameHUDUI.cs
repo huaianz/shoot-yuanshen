@@ -83,6 +83,12 @@ public class GameHUDUI : MonoBehaviour
     }
     private void OnClickPackage()
     {
+        if (InTacticalMatch())
+        {
+            ToastUI.ShowMessage("对局中不能打开背包", Color.yellow);
+            return;
+        }
+
         if (_packagePanel != null)
         {
             _packagePanel.OpenPanel();
@@ -91,6 +97,12 @@ public class GameHUDUI : MonoBehaviour
 
     private void OnClickCharacter()
     {
+        if (InTacticalMatch())
+        {
+            ToastUI.ShowMessage("对局中不能打开角色界面", Color.yellow);
+            return;
+        }
+
         if (_characterPanel != null)
         {
             _characterPanel.OpenPanel();
@@ -98,6 +110,15 @@ public class GameHUDUI : MonoBehaviour
     }
     private void OnClickSettings()
     {
+        if (InTacticalMatch()) return;
         if (_settingsPanel != null) _settingsPanel.OpenPanel();
+    }
+
+    private static bool InTacticalMatch()
+    {
+        return RoomSession.CurrentMode == "pvp"
+            && RoomSession.InRoom
+            && BattleClient.Instance != null
+            && BattleClient.Instance.LastRound != null;
     }
 }

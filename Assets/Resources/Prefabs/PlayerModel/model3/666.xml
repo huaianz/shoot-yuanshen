@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaData>
+    <!--garments and avatar are counted seperately-->
+    <Product Version="6, 0, 351, 32317"/>
+    <Garment Version="1000"/>
+    <Garment>
+        <Total>
+            <!--sum of tiangle and quad count-->
+            <Polygon Count="51420">
+                <!--total garment triangle count-->
+                <Triangle Count="35290"/>
+                <!--total garment quad count-->
+                <Quad Count="16130"/>
+            </Polygon>
+            <!--total garment vertex count-->
+            <Vertex Count="20897"/>
+        </Total>
+        <Detail>
+            <Pattern Triangle="32484" Quad="16130" Vertex="18091"/>
+            <Trim Triangle="2806" Quad="0" Vertex="2806"/>
+        </Detail>
+        <Material TotalMaterial="5" UsedMaterial="5"/>
+    </Garment>
+    <ImageFile>
+        <Name 1="0.png"/>
+        <Name 2="90.png"/>
+        <Name 3="180.png"/>
+        <Name 4="270.png"/>
+    </ImageFile>
+</MetaData>

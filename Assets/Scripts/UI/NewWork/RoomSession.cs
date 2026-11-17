@@ -6,6 +6,8 @@ using UnityEngine;
 public static class RoomSession
 {
     public static string CurrentRoomId { get; private set; }
+    public static string CurrentMode { get; private set; } = "coop";
+    public static int CurrentMaxPlayers { get; private set; } = 2;
     public static bool InRoom => !string.IsNullOrEmpty(CurrentRoomId);
 
     public static void Enter(RoomResult result)
@@ -17,9 +19,11 @@ public static class RoomSession
             BattleClient.Instance.Disconnect();
 
         CurrentRoomId = result.roomId;
+        CurrentMode = string.IsNullOrEmpty(result.mode) ? "coop" : result.mode;
+        CurrentMaxPlayers = result.maxPlayers > 0 ? result.maxPlayers : 2;
         BattleClient.Instance.ConnectTo(result.battleIp, result.battlePort, result.roomId);
 
-        Debug.Log($"[RoomSession] 进入房间 {result.roomId}, 战斗服 {result.battleIp}:{result.battlePort}");
+        Debug.Log($"[RoomSession] 进入房间 {result.roomId}({CurrentMode}), 战斗服 {result.battleIp}:{result.battlePort}");
     }
 
     public static void Leave()
@@ -31,5 +35,7 @@ public static class RoomSession
         BattleClient.Instance.ClearRoomState();
         Debug.Log($"[RoomSession] 离开房间 {CurrentRoomId}");
         CurrentRoomId = null;
+        CurrentMode = "coop";
+        CurrentMaxPlayers = 2;
     }
 }

@@ -134,12 +134,12 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
         _allItemsCacheDirty = true;
     }
 
-    public void AddWeapon(int itemID, List<int> affixIds = null)
+    public string AddWeapon(int itemID, List<int> affixIds = null)
     {
         var item = weaponData.GetWeaponByID(itemID);
         if (item == null)
         {
-            return;
+            return null;
         }
         var newWeapon = new WeaponItem
         {
@@ -164,6 +164,7 @@ public class InventoryManager : SingleMonoBase<InventoryManager>
         _isDirty = true;
         _allItemsCacheDirty = true;
         EventHandler.CallInventoryChangedEvent();
+        return newWeapon.instanceID;
     }
 
     /// <summary>

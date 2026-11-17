@@ -585,7 +585,14 @@ public class LoginUI : MonoBehaviour
         _loadingTip.text = _loadingTips[Random.Range(0, _loadingTips.Length)];
 
         // 立即开始异步加载, 与淡入重叠, 不浪费等待时间
-        AsyncOperation op = SceneManager.LoadSceneAsync("SampleScene");
+        AsyncOperation op = SceneManager.LoadSceneAsync("Game");
+
+        if (op == null)
+        {
+            Debug.LogError("[LoginUI] 无法加载场景 Game，请检查它是否在 Build Settings 里");
+            yield break;
+        }
+
         op.allowSceneActivation = false;
 
         // 淡入(此时加载已经同步开始了)

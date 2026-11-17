@@ -23,6 +23,9 @@ public class RoomListUI : MonoBehaviour
     public TMP_Dropdown maxPlayersDropdown;   // 可留空
     public Button createBtn;
 
+    [Header("模式(可留空)")]
+    public TMP_Dropdown modeDropdown;         // 0=合作 1=战术
+
     [Header("按钮")]
     public Button refreshBtn;
     public Button closeBtn;
@@ -35,6 +38,7 @@ public class RoomListUI : MonoBehaviour
     private float _busyTimer;
     private float _timer;
     private bool _blocking;   // 是否已经进入 UI 锁定状态
+    private string _modeOverride = "coop";
 
     private const float BusyTimeout = 6f;   // 请求超时时间(秒)
 
@@ -136,6 +140,18 @@ public class RoomListUI : MonoBehaviour
         GameClient.Instance.RequestRoomList();
     }
 
+    /// <summary>用两个按钮选模式时调用</summary>
+    public void SetModeCoop() { _modeOverride = "coop"; }
+    public void SetModePvp() { _modeOverride = "pvp"; }
+
+    private string CurrentMode()
+    {
+        if (modeDropdown != null)
+            return modeDropdown.value == 1 ? "pvp" : "coop";
+
+        return _modeOverride;
+    }
+
     private void OnClickCreate()
     {
         if (_busy) return;
@@ -160,12 +176,17 @@ public class RoomListUI : MonoBehaviour
 
         int maxPlayers = 2;
         if (maxPlayersDropdown != null)
-            maxPlayers = Mathf.Clamp(maxPlayersDropdown.value + 2, 2, 4);
+        {
+            // 1v1 / 2v2 / 3v3 -> 2 / 4 / 6 人
+            int[] capacities = { 2, 4, 6 };
+            maxPlayers = capacities[Mathf.Clamp(maxPlayersDropdown.value, 0, capacities.Length - 1)];
+        }
 
         _busy = true;
         _busyTimer = 0f;
-        Debug.Log($"[RoomListUI] 创建房间: name={name}, maxPlayers={maxPlayers}");
-        GameClient.Instance.CreateRoom(name, maxPlayers);
+        string mode = CurrentMode();
+        Debug.Log($"[RoomListUI] 创建房间: name={name}, maxPlayers={maxPlayers}, mode={mode}");
+        GameClient.Instance.CreateRoom(name, maxPlayers, mode);
     }
 
     private void OnClickJoin(string roomId)

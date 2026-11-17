@@ -62,11 +62,25 @@ public class BattleClient : MonoBehaviour
     public event Action<WaveStateDto> OnWaveState;
     public event Action<EnemyShotDto> OnEnemyShot;
     public event Action<PlayerShotDto> OnPlayerShot;
+    public event Action<RoundStateDto> OnRoundState;
+    public event Action<LobbyStateDto> OnLobbyState;
+    public event Action<SwapIncomingDto> OnSwapIncoming;
+    public event Action<SwapResultDto> OnSwapResult;
+    public event Action<CharacterSelectStateDto> OnCharacterSelectState;
+    public event Action<BuyItemResultDto> OnBuyItemResult;
+    public event Action<MatchResultDto> OnMatchResult;
+    public event Action<SpikeStateDto> OnSpikeState;
     public event Action<RewardDto> OnReward;
     public event Action<BuyResultDto> OnBuyResult;
     public event Action OnRoomChanged;
     public int MatchCoins { get; private set; }
     public int CurrentWave { get; private set; }
+    public int MyTeam { get; private set; } = -1;
+    public int MyArmor { get; private set; }
+    public int MyMatchWeaponId { get; private set; }
+    public int MyMatchWeaponDamage { get; private set; }
+    public RoundStateDto LastRound { get; private set; }
+    public LobbyStateDto LastLobby { get; private set; }
     private TcpClient _tcp;
     private NetworkStream _stream;
     private readonly ConcurrentQueue<Action> _mainThread = new ConcurrentQueue<Action>();
@@ -165,6 +179,8 @@ public class BattleClient : MonoBehaviour
             playerId = GameClient.Instance != null ? GameClient.Instance.LoggedInUser : "local",
             token = GameClient.Instance != null ? GameClient.Instance.Token : "",
             roomId = RoomId,
+            mode = RoomSession.CurrentMode,
+            maxPlayers = RoomSession.CurrentMaxPlayers,
             x = pos.x,
             y = pos.y,
             z = pos.z
@@ -295,7 +311,7 @@ public class BattleClient : MonoBehaviour
             z = pos.z,
             animId = GetAnimId(pc.currentPlayerModel),
             weaponId = pc.currentPlayerModel != null && pc.currentPlayerModel.weapon != null
-                ? pc.currentPlayerModel.weapon.CurrentWeaponID
+                ? GetWeaponIdForNetwork(pc.currentPlayerModel.weapon)
                 : -1,
             teleport = _teleportPending
         };
@@ -317,6 +333,11 @@ public class BattleClient : MonoBehaviour
                         if (p.id == MyPlayerId)
                         {
                             MyServerHp = p.hp;
+                            MyTeam = p.team;
+                            MatchCoins = p.matchCoins;
+                            MyArmor = p.armor;
+                            MyMatchWeaponId = p.matchWeaponId;
+                            MyMatchWeaponDamage = p.matchWeaponDamage;
                             break;
                         }
                     string oldRoom = RoomId;
@@ -330,6 +351,9 @@ public class BattleClient : MonoBehaviour
                         OnRoomChanged?.Invoke();
                     }
                     Debug.Log($"[BattleClient] 加入战斗服成功: 我的id={MyPlayerId}, 房间={RoomId}, 房内玩家={dto.players.Count}");
+
+                    // 大厅状态可能比 JoinAccepted 先到, 拿到自己的 id 后重刷一次
+                    if (LastLobby != null) OnLobbyState?.Invoke(LastLobby);
                     break;
                 }
             case BattleMsgId.Snapshot:
@@ -347,9 +371,69 @@ public class BattleClient : MonoBehaviour
                         if (p.id == MyPlayerId)
                         {
                             MyServerHp = p.hp;
+                            MyTeam = p.team;
+                            MatchCoins = p.matchCoins;
+                            MyArmor = p.armor;
+                            MyMatchWeaponId = p.matchWeaponId;
+                            MyMatchWeaponDamage = p.matchWeaponDamage;
                             break;
                         }
                     OnSnapshot?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.RoundState:
+                {
+                    var dto = JsonUtility.FromJson<RoundStateDto>(json);
+                    LastRound = dto;
+                    OnRoundState?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.LobbyState:
+                {
+                    var dto = JsonUtility.FromJson<LobbyStateDto>(json);
+                    LastLobby = dto;
+                    OnLobbyState?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.SwapIncoming:
+                {
+                    var dto = JsonUtility.FromJson<SwapIncomingDto>(json);
+                    OnSwapIncoming?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.SwapResult:
+                {
+                    var dto = JsonUtility.FromJson<SwapResultDto>(json);
+                    OnSwapResult?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.CharacterSelectState:
+                {
+                    var dto = JsonUtility.FromJson<CharacterSelectStateDto>(json);
+                    OnCharacterSelectState?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.BuyItemResult:
+                {
+                    var dto = JsonUtility.FromJson<BuyItemResultDto>(json);
+                    MyArmor = dto.armor;
+                    MatchCoins = dto.coins;
+                    MyServerHp = dto.hp;
+                    MyMatchWeaponId = dto.matchWeaponId;
+                    MyMatchWeaponDamage = dto.matchDamage;
+                    OnBuyItemResult?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.MatchResult:
+                {
+                    var dto = JsonUtility.FromJson<MatchResultDto>(json);
+                    OnMatchResult?.Invoke(dto);
+                    break;
+                }
+            case BattleMsgId.SpikeState:
+                {
+                    var dto = JsonUtility.FromJson<SpikeStateDto>(json);
+                    OnSpikeState?.Invoke(dto);
                     break;
                 }
             case BattleMsgId.Heartbeat:
@@ -372,7 +456,11 @@ public class BattleClient : MonoBehaviour
                 {
                     var dto = JsonUtility.FromJson<DamageResultDto>(json);
                     if (dto.attackerKind == 0 && dto.shooterId == MyPlayerId) HitsConfirmed++;
-                    if (dto.targetId == MyPlayerId) MyServerHp = dto.targetHp;
+                    if (dto.targetId == MyPlayerId)
+                    {
+                        MyServerHp = dto.targetHp;
+                        MyArmor = dto.targetArmor;
+                    }
                     OnDamageResult?.Invoke(dto);
                     break;
                 }
@@ -541,10 +629,114 @@ public class BattleClient : MonoBehaviour
         Send(BattleMsgId.StartWave, "{}");
     }
 
+    public void SendSetReady(bool ready)
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.SetReady, "{\"ready\":" + (ready ? "true" : "false") + "}");
+    }
+
+    public void SendStartMatch()
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.StartMatch, "{}");
+    }
+
+    public void SendMoveSlot(int team, int slot)
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.MoveSlot, "{\"team\":" + team + ",\"slot\":" + slot + "}");
+    }
+
+    public void SendSwapRequest(int targetId)
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.SwapRequest, "{\"targetId\":" + targetId + "}");
+    }
+
+    public void SendSwapResponse(int requestId, bool accept)
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.SwapResponse,
+            "{\"requestId\":" + requestId + ",\"accept\":" + (accept ? "true" : "false") + "}");
+    }
+
+    public void SendSelectCharacter(int characterId)
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.SelectCharacter, "{\"characterId\":" + characterId + "}");
+    }
+
+    public void SendConfirmCharacter()
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.ConfirmCharacter, "{}");
+    }
+
+    public void SendBuyItem(int itemId)
+    {
+        string category = itemId == 1 || itemId == 2
+            ? "armor"
+            : (itemId == 3 ? "supply" : "weapon");
+        SendBuyItem(itemId, category);
+    }
+
+    public void SendBuyItem(int itemId, string category)
+    {
+        if (!IsConnected) return;
+
+        Weapon template = InventoryManager.INSTANCE != null
+            ? InventoryManager.INSTANCE.weaponData?.GetWeaponByID(itemId)
+            : null;
+        var dto = new BuyItemDto
+        {
+            itemId = itemId,
+            category = string.IsNullOrEmpty(category) ? "weapon" : category,
+            matchDamage = template != null ? template.matchDamage : 0,
+            matchPrice = template != null ? template.matchPrice : 0,
+            matchFireIntervalMs = template != null ? template.matchFireIntervalMs : 0
+        };
+        Send(BattleMsgId.BuyItem, JsonUtility.ToJson(dto));
+    }
+
+    public void SendReturnToLobby()
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.ReturnToLobby, "{}");
+    }
+
+    public void SendPlantSpike()
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.PlantSpike, "{}");
+    }
+
+    public void SendDefuseSpike()
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.DefuseSpike, "{}");
+    }
+
+    public void SendPickupSpike()
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.PickupSpike, "{}");
+    }
+
+    public void SendDropSpike()
+    {
+        if (!IsConnected) return;
+        Send(BattleMsgId.DropSpike, "{}");
+    }
+
     /// <summary>退出房间后清空本局数据</summary>
     public void ClearRoomState()
     {
         MyPlayerId = 0;
+        MyTeam = -1;
+        MyServerHp = 100;
+        MyArmor = 0;
+        MyMatchWeaponId = 0;
+        MyMatchWeaponDamage = 0;
         MatchCoins = 0;
         CurrentWave = 0;
         LatestSnapshot = null;
@@ -560,4 +752,14 @@ public class BattleClient : MonoBehaviour
         _teleportPending = true;
     }
     #endregion
+
+    private static int GetWeaponIdForNetwork(PlayerWeapon weapon)
+    {
+        if (RoomSession.CurrentMode == "pvp"
+            && RoomSession.InRoom
+            && Instance != null
+            && Instance.MyMatchWeaponId > 0)
+            return Instance.MyMatchWeaponId;
+        return weapon != null ? weapon.CurrentWeaponID : -1;
+    }
 }

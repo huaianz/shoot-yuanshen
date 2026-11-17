@@ -48,6 +48,13 @@ public class Weapon
     public int fireRate;
     public int BulletNum;
     public int Stars;
+    [Header("战术对局")]
+    [Tooltip("购买该武器后，对局服务器使用的单发伤害；0 表示未配置")]
+    public int matchDamage;
+    [Tooltip("战术对局购买价格；0 表示未配置")]
+    public int matchPrice;
+    [Tooltip("战术对局两发子弹的最短间隔(毫秒)；例如 200 = 每秒最多 5 发")]
+    public int matchFireIntervalMs = 200;
     [Header("武器详细信息")]
     public string weaponDescription;
     [Header("武器物品图片路径")]

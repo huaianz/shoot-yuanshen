@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 using UnityEngine.AI;
@@ -11,6 +10,9 @@ using UnityEngine.AI;
 /// </summary>
 public class PlayerModel : MonoBehaviour, IStateMachineOwner
 {
+    [Tooltip("该模型在 PlayerData 中对应的角色ID")]
+    public int roleID = -1;
+
     [Tooltip("角色武器")]
     public PlayerWeapon weapon;
 
@@ -28,6 +30,9 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     #region 约束相关
     public MultiAimConstraint rightHandAimConstraint;//正常状态下的右手约束
     public TwoBoneIKConstraint rightHandConstraint;//瞄准状态下的右手约束
+    public TwoBoneIKConstraint leftHandConstraint;//左手扶枪约束
+    public bool useRightHandConstraint = true;//MMD角色可保留原动画，不使用额外右手IK
+    public int mmdHandRigVersion;//场景手部Rig迁移版本
     public MultiAimConstraint BodyAimConstraint;//身体约束
     #endregion
 
@@ -65,12 +70,27 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     #endregion
     private void Awake()
     {
-        stateMachine = new StateMachine(this);
-        animtor = GetComponent<Animator>();
-        cc = GetComponent<CharacterController>();
+        EnsureInitialized();
         navMeshAgent = GetComponent<NavMeshAgent>();
-        navMeshAgent.stoppingDistance = stoppingDistance;
-        navMeshAgent.angularSpeed = PlayerController.INSTANCE.rotationSpeed;
+
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.stoppingDistance = stoppingDistance;
+            if (PlayerController.INSTANCE != null)
+                navMeshAgent.angularSpeed = PlayerController.INSTANCE.rotationSpeed;
+        }
+    }
+
+    private void EnsureInitialized()
+    {
+        if (stateMachine == null) stateMachine = new StateMachine(this);
+
+        animtor = GetComponent<Animator>();
+        if (animtor == null) animtor = GetComponentInChildren<Animator>(true);
+        cc = GetComponent<CharacterController>();
+        if (cc == null) cc = GetComponentInChildren<CharacterController>(true);
+        if (weapon == null) weapon = GetComponent<PlayerWeapon>();
+        if (weapon == null) weapon = GetComponentInChildren<PlayerWeapon>(true);
     }
 
     void Start()
@@ -110,7 +130,9 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     /// </summary>
     public void Enter()
     {
-        navMeshAgent.enabled = false;
+        EnsureInitialized();
+        if (navMeshAgent != null) navMeshAgent.enabled = false;
+        if (animtor != null) animtor.enabled = true;
     }
 
     /// <summary>
@@ -118,8 +140,9 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     /// </summary>
     public void Exit()
     {
-        navMeshAgent.enabled = true;
-        SwitchState(PlayerState.Idle);
+        if (navMeshAgent != null) navMeshAgent.enabled = true;
+        if (gameObject.activeInHierarchy)
+            SwitchState(PlayerState.Idle);
     }
 
     /// <summary>
@@ -127,6 +150,10 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     /// </summary>
     public void SwitchState(PlayerState state)
     {
+        EnsureInitialized();
+        if (stateMachine == null)
+            return;
+
         switch (state)
         {
             case PlayerState.Idle:
@@ -235,10 +262,13 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     /// </summary>
     public void EnterAim()
     {
+        // 左手扶枪不参与瞄准状态切换，必须始终保持。
+        EnsureLeftHandConstraint();
         //启动瞄准约束
-        rightHandAimConstraint.weight = 1;
-        BodyAimConstraint.weight = 1;
-        rightHandConstraint.weight = 0;
+        if (rightHandAimConstraint != null) rightHandAimConstraint.weight = 1;
+        if (BodyAimConstraint != null) BodyAimConstraint.weight = 1;
+        if (useRightHandConstraint && rightHandConstraint != null)
+            rightHandConstraint.weight = 0;
     }
 
     /// <summary>
@@ -246,9 +276,19 @@ public class PlayerModel : MonoBehaviour, IStateMachineOwner
     /// </summary>
     public void ExitAim()
     {
-        rightHandAimConstraint.weight = 0;
-        BodyAimConstraint.weight = 0;
-        rightHandConstraint.weight = 1;
+        EnsureLeftHandConstraint();
+        if (rightHandAimConstraint != null) rightHandAimConstraint.weight = 0;
+        if (BodyAimConstraint != null) BodyAimConstraint.weight = 0;
+        if (useRightHandConstraint && rightHandConstraint != null)
+            rightHandConstraint.weight = 1;
+    }
+
+    private void EnsureLeftHandConstraint()
+    {
+        if (leftHandConstraint == null)
+            return;
+        leftHandConstraint.enabled = true;
+        leftHandConstraint.weight = 1f;
     }
 
     /// <summary>

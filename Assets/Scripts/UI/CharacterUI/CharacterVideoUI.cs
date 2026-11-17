@@ -22,7 +22,10 @@ public class CharacterVideoUI : MonoBehaviour
         _transparentTexture.Apply();
 
         if (videoDisplay != null)
+        {
             videoDisplay.texture = _transparentTexture;
+            videoDisplay.raycastTarget = false;
+        }
 
         //如果没有指定的渲染目标纹理，则自动创建
         if (renderTexture == null)
@@ -89,6 +92,8 @@ public class CharacterVideoUI : MonoBehaviour
         _isPreparing = false;
         if (_videoPlayer.isPrepared)
         {
+            if (videoDisplay != null)
+                videoDisplay.texture = renderTexture;
             _videoPlayer.Play();
         }
     }
@@ -102,6 +107,8 @@ public class CharacterVideoUI : MonoBehaviour
     {
         Debug.LogError($"视频播放错误：{message}");
         _isPreparing = false;
+        if (videoDisplay != null)
+            videoDisplay.texture = _transparentTexture;
     }
 
     /// <summary>
@@ -126,7 +133,7 @@ public class CharacterVideoUI : MonoBehaviour
         //清空显示
         if (videoDisplay != null)
         {
-            videoDisplay.texture = null;
+            videoDisplay.texture = _transparentTexture;
         }
     }
 
@@ -180,9 +187,9 @@ public class CharacterVideoUI : MonoBehaviour
             yield break;
         }
 
-        // 切换到视频纹理
-        if (videoDisplay != null && videoDisplay.texture != renderTexture)
-            videoDisplay.texture = renderTexture;
+        // 准备完成前保持透明，避免全屏 RawImage 没有纹理时绘制成白色。
+        if (videoDisplay != null)
+            videoDisplay.texture = _transparentTexture;
 
         _currentVideoPath = videoPath;
         _videoPlayer.clip = clip;

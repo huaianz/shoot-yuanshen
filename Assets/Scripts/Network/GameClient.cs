@@ -235,7 +235,8 @@ public class GameClient : MonoBehaviour
                                 name = r.name,
                                 players = r.players,
                                 maxPlayers = r.maxPlayers,
-                                state = r.state
+                                state = r.state,
+                                mode = r.mode
                             });
                         }
                     }
@@ -253,7 +254,9 @@ public class GameClient : MonoBehaviour
                         roomId = dto.roomId,
                         playerId = dto.playerId,
                         battleIp = dto.battleIp,
-                        battlePort = dto.battlePort
+                        battlePort = dto.battlePort,
+                        mode = dto.mode,
+                        maxPlayers = dto.maxPlayers
                     });
                     break;
                 }
@@ -268,7 +271,9 @@ public class GameClient : MonoBehaviour
                         roomId = dto.roomId,
                         playerId = dto.playerId,
                         battleIp = dto.battleIp,
-                        battlePort = dto.battlePort
+                        battlePort = dto.battlePort,
+                        mode = dto.mode,
+                        maxPlayers = dto.maxPlayers
                     };
                     if (dto.players != null) result.players.AddRange(dto.players);
                     OnJoinRoomResult?.Invoke(result);
@@ -358,9 +363,15 @@ public class GameClient : MonoBehaviour
         _ = SendAsync(MsgRoomList, JsonUtility.ToJson(dto));
     }
 
-    public void CreateRoom(string roomName, int maxPlayers = 2)
+    public void CreateRoom(string roomName, int maxPlayers = 2, string mode = "coop")
     {
-        var dto = new CreateRoomRequestDto { token = Token, roomName = roomName, maxPlayers = maxPlayers };
+        var dto = new CreateRoomRequestDto
+        {
+            token = Token,
+            roomName = roomName,
+            maxPlayers = maxPlayers,
+            mode = mode
+        };
         _ = SendAsync(MsgCreateRoom, JsonUtility.ToJson(dto));
     }
 

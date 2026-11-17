@@ -166,6 +166,7 @@ public class CoopShopUI : MonoBehaviour
     private string ShopBlockReason()
     {
         if (!RoomSession.InRoom) return "请先进入联机房间";
+        if (RoomSession.CurrentMode == "pvp") return "战术模式请用回合购买界面";
 
         var bc = BattleClient.Instance;
         if (bc == null || !bc.IsConnected || bc.MyPlayerId <= 0)
